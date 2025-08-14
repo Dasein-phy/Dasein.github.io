@@ -1,10 +1,10 @@
 # Site settings
 title: Hux Blog
-SEOTitle: 黄玄的博客 | Hux Blog
+SEOTitle: 心哲空间 | Dasein Blog
 header-img: img/home-bg.jpg
-email: huxpro@gmail.com
-description: "这里是 @Hux黄玄 的个人博客，与你一起发现更大的世界 | 要做一个有 swag 的程序员"
-keyword: "黄玄, Hux黄玄, Hux, 鬼栈, huxpro, @huxpro, 黄玄的博客, Hux Blog, 博客, 个人网站, 互联网, Web, JavaScript, React, React Native, 前端, 设计"
+email: 1780amadeus@gmail.com
+description: "这里是心哲空间，我们会在这里发布一切关于心理、哲学，一切关于人与世界的内容"
+keyword: "心理，哲学，社科，文字冒险，游戏，观念，海德格尔，尼采，意义，自由，理性，感性，维特根斯坦，禅宗，后朋克，思想"
 url: "https://huangxuan.me" # your host, for absolute URL
 baseurl: "" # for example, '/blog' if your blog hosted on 'host/blog'
 
@@ -74,7 +74,7 @@ ga_domain: huangxuan.me
 
 # Sidebar settings
 sidebar: true # whether or not using Sidebar.
-sidebar-about-description: "要做一个有 swag 的程序员 <br> React Team @ Meta"
+sidebar-about-description: "生命的一切都关于爱，爱与被爱 <br> React Team @ Meta"
 sidebar-avatar: https://github.com/Huxpro.png # use absolute URL, seeing it's used in both `/` and `/about/`
 
 # Featured Tags
