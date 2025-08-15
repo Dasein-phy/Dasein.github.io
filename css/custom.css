@@ -189,8 +189,8 @@
 .bm-panel{
   position: absolute;
   top: 0;
-  right: -260px;            /* 初始完全在屏外（不露出最右） */
-  width: 260px;             /* 卡片宽度（与 .bookmark-rail 宽度配合） */
+  right: -260px;            /* 仍然以“完全在屏外”为基准 */
+  width: 260px;
   height: 100%;
   background: #ffffff;
   border: 1px solid rgba(0,0,0,.06);
@@ -201,9 +201,12 @@
   align-items: center;
   justify-content: space-between;
   transition: transform .18s ease, box-shadow .18s ease;
-  transform: translateX(0);      /* 我们通过 right 固定位置，再用 transform 做微动 */
-  pointer-events: none;          /* 避免遮挡 hover 判断 */
+  /* ⭐ 默认露出约 1/3（≈86px） */
+  transform: translateX(-86px);
+  pointer-events: none;
 }
+
+
 
 /* 文案样式 */
 .bm-title{
