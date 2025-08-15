@@ -1,0 +1,86 @@
+[
+  {
+    "id": "A_01",
+    "dim": "A",
+    "text": "我会定期审视自己的信念是否只是外部环境的产物。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "A_02",
+    "dim": "A",
+    "text": "当一种叙事开始“奏效”时，我仍会质疑它的正当性。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "A_03",
+    "dim": "A",
+    "text": "我很少思考‘生命是否有终极意义’。（反向）",
+    "reverse": true,
+    "weight": 1.0
+  },
+  {
+    "id": "A_04",
+    "dim": "A",
+    "text": "我能清楚区分‘我真正的动因’与‘社会期待’。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "C_01",
+    "dim": "C",
+    "text": "没有稳定的价值/故事框架时，我的行动显著下降。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "C_02",
+    "dim": "C",
+    "text": "我愿意为一个长期故事（理想/使命）牺牲短期收益。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "C_03",
+    "dim": "C",
+    "text": "秩序和规则并不会影响我的动因。（反向）",
+    "reverse": true,
+    "weight": 1.0
+  },
+  {
+    "id": "C_04",
+    "dim": "C",
+    "text": "群体与传统提供的价值能稳定我的行动。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "D_01",
+    "dim": "D",
+    "text": "我更倾向拆解叙事，而不是巩固它。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "D_02",
+    "dim": "D",
+    "text": "我对‘意义感’的强烈追求让我警惕。",
+    "reverse": false,
+    "weight": 1.0
+  },
+  {
+    "id": "D_03",
+    "dim": "D",
+    "text": "我相信总能找到一个最终正确的意义系统。（反向）",
+    "reverse": true,
+    "weight": 1.0
+  },
+  {
+    "id": "D_04",
+    "dim": "D",
+    "text": "我会把‘意义’当作策略工具而非真理。",
+    "reverse": false,
+    "weight": 1.0
+  }
+]
