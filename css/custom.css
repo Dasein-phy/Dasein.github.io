@@ -255,3 +255,10 @@
 }
 
 .post-preview a:hover{ text-decoration: none; }
+
+/* 侧栏社交链接（竖排） */
+.sns-vert{ list-style:none; margin:10px 0 0; padding:0; }
+.sns-vert li{ margin:8px 0; font-size:14px; line-height:1.2; }
+.sns-vert a{ color:#2f6f80; text-decoration:none; }
+.sns-vert a:hover{ text-decoration:underline; }
+.sns-vert .sns-mute{ color:#6b7280; }
