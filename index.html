@@ -10,36 +10,34 @@ description: "「离开世界之前 一切都是过程」"
     <div class="masonry">
 
       <!-- 作者 special-card（顶部留白缩小、带头像） -->
-      <article class="card post-card special-card" id="author-card">
-        <div class="sc-head">
-          <img class="avatar" src="{{ site.baseurl }}/img/avatar.jpg" alt="avatar">
-          <div>
-            <h2 class="sc-title">心哲空间</h2>
-            <div class="sc-sub">
-              严肃写作与系统建构：结构生成论—原初意义论—天平论—元行为心理学
-            </div>
-          </div>
-        </div>
+<article class="card post-card special-card" id="author-card">
+  <div class="sc-head">
+    <img class="avatar" src="{{ site.baseurl }}/img/avatar.jpg" alt="avatar">
+    <div>
+      <h2 class="sc-title">Dasein</h2>
+      <div class="sc-sub">
+        严肃写作与系统建构：结构生成论—原初意义论—天平论—元行为心理学
+      </div>
+    </div>
+  </div>
 
-        <div class="sc-links">
-          {% if site.github_username %}
-            <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a>
-            <span class="dot">·</span>
-          {% endif %}
+  <div class="sc-links sc-links--stack">
+    {% if site.github_username %}
+      <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a>
+    {% endif %}
 
-          {% if site.twitter_username %}
-            <a href="https://twitter.com/{{ site.twitter_username | replace:'@','' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username | replace:'@','' }}</a>
-            <span class="dot">·</span>
-          {% endif %}
+    {% if site.twitter_username %}
+      <a href="https://twitter.com/{{ site.twitter_username | replace:'@','' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username | replace:'@','' }}</a>
+    {% endif %}
 
-          {% if site.zhihu_username %}
-            <a href="https://www.zhihu.com/people/{{ site.zhihu_username | uri_escape }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_display | default: site.zhihu_username }}</a>
-            <span class="dot">·</span>
-          {% endif %}
+    {% if site.zhihu_username %}
+      <a href="https://www.zhihu.com/people/{{ site.zhihu_username | uri_escape }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_display | default: site.zhihu_username }}</a>
+    {% endif %}
 
-          <span class="sns-mute">公众号 · 心哲空间</span>
-        </div>
-      </article>
+    <span class="sns-mute">公众号 · 心哲空间</span>
+  </div>
+</article>
+
 
       <!-- 文章卡片 -->
       {% for post in paginator.posts %}
