@@ -4,7 +4,7 @@ description: "「离开世界之前 一切都是过程」"
 ---
 
 <div class="dz-layout post-list">
-  <!-- 左列：文章卡片流（只放文章和翻页） -->
+  <!-- 左列：文章卡片流 -->
   <div class="post-col">
     {% for post in paginator.posts %}
     <article class="card post-card">
@@ -51,54 +51,70 @@ description: "「离开世界之前 一切都是过程」"
     {% endif %}
   </div>
 
-  <!-- 右列：人物侧栏 + 宽版目录，只在这里放一次 -->
+  <!-- 右列：人物卡 + 时间目录（这一列靠屏幕右侧 1/4） -->
   <aside class="sidebar-col">
+    <!-- 人物卡（不是卡片就删掉整个 section） -->
     <section class="card author-card">
       <div class="author-head">
-        <img class="avatar" src="{{ site.sidebar-avatar | default: '/img/avatar.jpg' }}" alt="avatar">
+        <img class="avatar" src="{{ site.sidebar-avatar | default: '/img/avatar.jpg' | prepend: site.baseurl }}" alt="{{ site.title }}">
         <div class="meta">
-          <div class="name">心哲空间</div>
+          <div class="name">{{ site.title }}</div>
           <div class="desc">{{ site.sidebar-about-description }}</div>
-          <ul class="sns-vert">
-            {% if site.zhihu_username %}<li><a href="https://www.zhihu.com/people/{{ site.zhihu_username }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_display | default: site.zhihu_username }}</a></li>{% endif %}
-            {% if site.github_username %}<li><a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a></li>{% endif %}
-            {% if site.twitter_username %}<li><a href="https://twitter.com/{{ site.twitter_username | replace:'@','' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username }}</a></li>{% endif %}
-            {% if site.bilibili_username %}<li><a href="https://space.bilibili.com/{{ site.bilibili_uid }}" target="_blank" rel="noopener">Bilibili · {{ site.bilibili_username }}</a></li>{% endif %}
-            {% if site.wechat_official_name %}<li><span class="sns-mute">公众号 · {{ site.wechat_official_name }}</span></li>{% endif %}
-          </ul>
         </div>
       </div>
+      <ul class="sns-vert">
+        {% if site.zhihu_username_text %}
+          {% if site.zhihu_username %}
+            <li><a href="https://www.zhihu.com/people/{{ site.zhihu_username }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_username_text }}</a></li>
+          {% else %}
+            <li>知乎 · {{ site.zhihu_username_text }}</li>
+          {% endif %}
+        {% endif %}
+        {% if site.github_username %}
+          <li><a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a></li>
+        {% endif %}
+        {% if site.twitter_username %}
+          <li><a href="https://twitter.com/{{ site.twitter_username | remove: '@' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username }}</a></li>
+        {% endif %}
+        {% if site.bilibili_uid %}
+          <li><a href="https://space.bilibili.com/{{ site.bilibili_uid }}" target="_blank" rel="noopener">Bilibili · {{ site.bilibili_username | default: '个人主页' }}</a></li>
+        {% endif %}
+        {% if site.wechat_official_name %}
+          <li class="sns-mute">公众号 · {{ site.wechat_official_name }}</li>
+        {% endif %}
+      </ul>
     </section>
 
+    <!-- 时间目录卡（最新在上） -->
     <section class="card directory-card">
       <h6 class="card-title">最新文章</h6>
       <div class="dir-list">
         {% assign _sorted = site.posts | sort: 'date' | reverse %}
         {% for p in _sorted limit: 40 %}
-        <div class="dir-item">
-          <a href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">{{ p.title }}</a>
-          <span class="dir-date">{{ p.date | date: "%m-%d" }}</span>
-        </div>
+          <div class="dir-item">
+            <a href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">{{ p.title }}</a>
+            <span class="dir-date">{{ p.date | date: "%m-%d" }}</span>
+          </div>
         {% endfor %}
       </div>
     </section>
   </aside>
 </div>
 
-<!-- 最右侧：书签式滑出目录（细长小卡片） -->
+<!-- 最右：书签式文章轨道（只此一处） -->
 <div id="bookmark-rail" class="bookmark-rail">
   <ul class="bm-ul">
-    {% assign _sorted = site.posts | sort: 'date' | reverse %}
-    {% for p in _sorted %}
-    <li class="bm-item">
-      <a class="bm-link" href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">
-        <span class="bm-panel">
-          <span class="bm-title">{{ p.title }}</span>
-          <span class="bm-date">{{ p.date | date: "%m-%d" }}</span>
-        </span>
-        <span class="bm-tab">{{ p.title | truncate: 6 }}</span>
-      </a>
-    </li>
+    {% assign _sorted2 = site.posts | sort: 'date' | reverse %}
+    {% for p in _sorted2 %}
+      <li class="bm-item">
+        <a class="bm-link" href="{{ p.url | prepend: site.baseurl }}">
+          <span class="bm-panel">
+            <span class="bm-title">{{ p.title }}</span>
+            <span class="bm-date">{{ p.date | date: "%m-%d" }}</span>
+          </span>
+          <span class="bm-tab">{{ p.title }}</span>
+        </a>
+      </li>
     {% endfor %}
   </ul>
 </div>
@@ -107,11 +123,15 @@ description: "「离开世界之前 一切都是过程」"
 (function(){
   var rail = document.getElementById('bookmark-rail');
   if(!rail) return;
+
   var ul = rail.querySelector('.bm-ul');
   var items = ul.querySelectorAll('.bm-item');
 
-  var H = 56, visible = 7, idx = 0, lock = false;
+  var H = 56;                 // 每根卡高度(含间距) —— 与 CSS 对齐
+  var visible = 7;            // 一屏显示 7 根，靠裁剪形成上下半隐
+  var idx = 0;
 
+  // ≤5 篇时：关闭半隐与滚动
   if(items.length <= 5){
     rail.style.height = 'auto';
     rail.style.paddingTop = '0';
@@ -119,24 +139,21 @@ description: "「离开世界之前 一切都是过程」"
     rail.style.overflow = 'visible';
   }
 
-  function maxIdx(){ return (items.length <= visible) ? 0 : Math.max(0, items.length - visible); }
+  function maxIdx(){ return Math.max(0, items.length - visible); }
   function update(){ ul.style.transform = 'translateY(' + (-idx * H) + 'px)'; }
   update();
 
-  function scrollBy(dir){
+  function scrollBy(d){
     var m = maxIdx();
     if(m === 0) return;
-    idx = Math.min(m, Math.max(0, idx + dir));
+    idx = Math.min(m, Math.max(0, idx + d));
     update();
   }
 
   rail.addEventListener('wheel', function(e){
     if(maxIdx() === 0) return;
     e.preventDefault();
-    if(lock) return;
-    lock = true;
-    scrollBy(e.deltaY > 0 ? 1 : -1);
-    setTimeout(function(){ lock = false; }, 160);
+    scrollBy((e.deltaY > 0) ? 1 : -1);
   }, { passive:false });
 
   window.addEventListener('keydown', function(e){
