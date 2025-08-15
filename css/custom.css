@@ -311,4 +311,22 @@
   border: 0 !important;
 }
 
+/* 作者卡：链接一行一个 & 间距 */
+.special-card .sc-links--stack a,
+.special-card .sc-links--stack .sns-mute{
+  display: block;
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+/* 已经不需要纵向的分隔点了，关掉它 */
+.special-card .sc-links--stack .dot{ display: none; }
+
+/* 视觉微调：标题稍微更挺拔一点 */
+#author-card .sc-title{
+  letter-spacing: .3px;
+}
+
+/* 头像与标题行距再压一丝，更紧凑 */
+#author-card .sc-head{ gap: 12px; margin: 2px 0 4px !important; }
 
