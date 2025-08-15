@@ -140,3 +140,20 @@
     flex-wrap:wrap; gap:8px;
   }
 }
+
+/* 只禁用四个选择器，不禁用“未测”复选框 */
+.mbti-select.is-disabled .mbti-current{ opacity:.5; cursor:not-allowed; }
+.mbti-select.is-disabled .mbti-menu{ display:none !important; }
+
+/* 悬停/展开：保持菜单与容器同一 wrap，避免移入时收起 */
+.mbti-select{ position:relative; display:block; margin:8px 0; }
+.mbti-select .mbti-menu{
+  position:absolute; left:100%; top:0;
+  opacity:0; transform: translateX(-6px) scale(.98);
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events:none;
+}
+.mbti-select.mt-open .mbti-menu{
+  opacity:1; transform: translateX(0) scale(1);
+  pointer-events:auto;
+}
