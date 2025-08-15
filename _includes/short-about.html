@@ -1,14 +1,11 @@
-<section class="visible-md visible-lg">
-  <hr>
-  <h5><a href="{{'/about/' | prepend: site.baseurl }}">ABOUT ME</a></h5>
-  <div class="short-about">
-    {% if site.sidebar-avatar %}
-    <img src="{{site.sidebar-avatar}}" />
-    {% endif %}
-    {% if site.sidebar-about-description %}
-    <p>{{site.sidebar-about-description}}</p>
-    {% endif %}
-    <!-- SNS Link -->
-    {% include sns-links.html %}
+<!-- _includes/short-about.html -->
+<div class="short-about">
+  <div class="avatar">
+    <!-- 对 Project Pages：/user/repo 前缀来自 site.baseurl -->
+    <img src="{{ site.baseurl }}{{ site.sidebar-avatar }}" alt="avatar">
   </div>
-</section>
+  {% if site.sidebar-about-description %}
+  <p>{{ site.sidebar-about-description }}</p>
+  {% endif %}
+  {% include sns-links.html center=true %}
+</div>
