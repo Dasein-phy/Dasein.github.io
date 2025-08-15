@@ -3,11 +3,27 @@ layout: page
 description: "「离开世界之前 一切都是过程」"
 ---
 
-<div class="dz-layout post-list">
-  <!-- 左列：文章卡片流 -->
-  <div class="post-col">
+<div class="dz-layout post-list is-masonry">
+  <!-- 瀑布流容器：人物卡 + 文章卡（同风格） -->
+  <div id="masonry" class="masonry">
+
+    <!-- 人物卡：样式与文章卡一致 -->
+    <article class="m-item card post-card">
+      <a class="post-link" href="{{ site.baseurl }}/about/">
+        <h2 class="post-title">心哲空间</h2>
+        <h3 class="post-subtitle">{{ site.sidebar-about-description }}</h3>
+        <p class="excerpt">
+          GitHub · {{ site.github_username }}
+          {% if site.twitter_username %}　·　Twitter · {{ site.twitter_username }}{% endif %}
+          {% if site.zhihu_username_text %}　·　知乎 · {{ site.zhihu_username_text }}{% endif %}
+          {% if site.wechat_official_name %}　·　公众号 · {{ site.wechat_official_name }}{% endif %}
+        </p>
+      </a>
+      <div class="post-meta"><span>关于本站 / Profile</span></div>
+    </article>
+
     {% for post in paginator.posts %}
-    <article class="card post-card">
+    <article class="m-item card post-card">
       <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">
         <h2 class="post-title">{{ post.title }}</h2>
         {% if post.subtitle %}
@@ -34,65 +50,26 @@ description: "「离开世界之前 一切都是过程」"
       </div>
     </article>
     {% endfor %}
-
-    {% if paginator.total_pages > 1 %}
-    <ul class="pager pager-clean">
-      {% if paginator.previous_page %}
-      <li class="previous">
-        <a class="btn btn-pager" href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
-      </li>
-      {% endif %}
-      {% if paginator.next_page %}
-      <li class="next">
-        <a class="btn btn-pager" href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
-      </li>
-      {% endif %}
-    </ul>
-    {% endif %}
   </div>
 
-  <!-- 右列：人物徽章（不规则紧密排布），不再使用“卡片” -->
-  <aside class="sidebar-col">
-    <section class="persona">
-      <div class="persona-head">
-        <img class="avatar" src="{{ site.sidebar-avatar | default: '/img/avatar.jpg' | prepend: site.baseurl }}" alt="{{ site.title }}">
-        <div class="meta">
-          <div class="name">{{ site.title }}</div>
-          <div class="desc">{{ site.sidebar-about-description }}</div>
-        </div>
-      </div>
-
-      <!-- 不规则徽章：用多列 masonry 效果 -->
-      <ul class="persona-badges">
-        {% if site.zhihu_username_text %}
-          {% if site.zhihu_username %}
-            <li class="chip chip--lg"><a href="https://www.zhihu.com/people/{{ site.zhihu_username }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_username_text }}</a></li>
-          {% else %}
-            <li class="chip chip--lg">知乎 · {{ site.zhihu_username_text }}</li>
-          {% endif %}
-        {% endif %}
-
-        {% if site.github_username %}
-          <li class="chip"><a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a></li>
-        {% endif %}
-
-        {% if site.twitter_username %}
-          <li class="chip chip--md"><a href="https://twitter.com/{{ site.twitter_username | remove: '@' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username }}</a></li>
-        {% endif %}
-
-        {% if site.bilibili_uid %}
-          <li class="chip"><a href="https://space.bilibili.com/{{ site.bilibili_uid }}" target="_blank" rel="noopener">Bilibili · {{ site.bilibili_username | default: '个人主页' }}</a></li>
-        {% endif %}
-
-        {% if site.wechat_official_name %}
-          <li class="chip chip--sm mute">公众号 · {{ site.wechat_official_name }}</li>
-        {% endif %}
-      </ul>
-    </section>
-  </aside>
+  <!-- 翻页 -->
+  {% if paginator.total_pages > 1 %}
+  <ul class="pager pager-clean">
+    {% if paginator.previous_page %}
+    <li class="previous">
+      <a class="btn btn-pager" href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
+    </li>
+    {% endif %}
+    {% if paginator.next_page %}
+    <li class="next">
+      <a class="btn btn-pager" href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
+    </li>
+    {% endif %}
+  </ul>
+  {% endif %}
 </div>
 
-<!-- 最右：书签式文章轨道（只此一处） -->
+<!-- 最右：书签式文章轨道（只保留这一条） -->
 <div id="bookmark-rail" class="bookmark-rail">
   <ul class="bm-ul">
     {% assign _sorted = site.posts | sort: 'date' | reverse %}
@@ -111,56 +88,57 @@ description: "「离开世界之前 一切都是过程」"
 </div>
 
 <script>
-/* —— 防重渲染：如果某处误又插入了 bookmark-rail，移除多余 —— */
+/* —— 防止“卡片条”重复：无论哪个文件又渲染了，统统只留一个 —— */
 (function(){
-  var rails = document.querySelectorAll('#bookmark-rail');
-  if (rails.length > 1) {
-    for (var i = 1; i < rails.length; i++) {
-      rails[i].parentNode.removeChild(rails[i]);
-    }
-  }
+  var railsById = document.querySelectorAll('#bookmark-rail');
+  if (railsById.length > 1) for (var i = 1; i < railsById.length; i++) railsById[i].remove();
+  var railsByClass = document.querySelectorAll('.bookmark-rail');
+  if (railsByClass.length > 1) for (var i = 1; i < railsByClass.length; i++) railsByClass[i].remove();
 })();
 
-/* —— 书签轨道滚动控制（与 CSS 联动） —— */
+/* —— 书签轨道滚动（露出约 1/3，文章≤5时自动无“半隐”） —— */
 (function(){
-  var rail = document.getElementById('bookmark-rail');
-  if(!rail) return;
-
-  var ul = rail.querySelector('.bm-ul');
-  var items = ul ? ul.querySelectorAll('.bm-item') : [];
-
-  var H = 56;       // 每根卡高度(含间距)
-  var visible = 7;  // 一屏显示 7 根
-  var idx = 0;
-
-  if(items.length <= 5){
-    rail.style.height = 'auto';
-    rail.style.paddingTop = '0';
-    rail.style.paddingBottom = '0';
-    rail.style.overflow = 'visible';
-  }
-
+  var rail = document.getElementById('bookmark-rail'); if(!rail) return;
+  var ul = rail.querySelector('.bm-ul'), items = ul.querySelectorAll('.bm-item');
+  var H = 56, visible = 7, idx = 0;
+  if(items.length <= 5){ rail.style.height='auto'; rail.style.paddingTop='0'; rail.style.paddingBottom='0'; rail.style.overflow='visible'; }
   function maxIdx(){ return Math.max(0, items.length - visible); }
   function update(){ ul.style.transform = 'translateY(' + (-idx * H) + 'px)'; }
+  function scrollBy(d){ var m=maxIdx(); if(m===0) return; idx=Math.min(m, Math.max(0, idx+d)); update(); }
   update();
+  rail.addEventListener('wheel', function(e){ if(maxIdx()===0) return; e.preventDefault(); scrollBy((e.deltaY>0)?1:-1); }, {passive:false});
+  window.addEventListener('keydown', function(e){ if(maxIdx()===0) return; if(e.key==='ArrowDown') scrollBy(1); if(e.key==='ArrowUp') scrollBy(-1); });
+})();
 
-  function scrollBy(d){
-    var m = maxIdx();
-    if(m === 0) return;
-    idx = Math.min(m, Math.max(0, idx + d));
-    update();
+/* —— Masonry列识别 + 悬停交互：本列上移，邻列下移 —— */
+(function(){
+  var grid = document.getElementById('masonry'); if(!grid) return;
+  function markColumns(){
+    var items = Array.from(grid.querySelectorAll('.m-item'));
+    if (items.length === 0) return;
+    // 以offsetLeft分组得到列
+    var xs = Array.from(new Set(items.map(function(it){ return it.offsetLeft; }))).sort(function(a,b){return a-b;});
+    items.forEach(function(it){ it.dataset.col = xs.indexOf(it.offsetLeft); });
+    grid.dataset.cols = xs.length;
   }
+  var recalc = function(){ markColumns(); };
+  window.addEventListener('load', recalc);
+  window.addEventListener('resize', function(){ setTimeout(recalc, 200); });
+  markColumns();
 
-  rail.addEventListener('wheel', function(e){
-    if(maxIdx() === 0) return;
-    e.preventDefault();
-    scrollBy((e.deltaY > 0) ? 1 : -1);
-  }, { passive:false });
-
-  window.addEventListener('keydown', function(e){
-    if(maxIdx() === 0) return;
-    if(e.key === 'ArrowDown') scrollBy(1);
-    if(e.key === 'ArrowUp')   scrollBy(-1);
-  });
+  var SHIFT = 8; // px
+  function reset(){ grid.querySelectorAll('.m-item').forEach(function(it){ it.style.transform=''; }); }
+  grid.addEventListener('mouseover', function(e){
+    var card = e.target.closest('.m-item'); if(!card) return;
+    var col = parseInt(card.dataset.col || -1), cols = parseInt(grid.dataset.cols || 0);
+    if(col < 0) return;
+    reset();
+    grid.querySelectorAll('.m-item').forEach(function(it){
+      var c = parseInt(it.dataset.col || -1);
+      if(c === col){ it.style.transform = 'translateY(-'+SHIFT+'px)'; }
+      else if(c === col-1 || c === col+1){ it.style.transform = 'translateY('+SHIFT+'px)'; }
+    });
+  }, true);
+  grid.addEventListener('mouseleave', reset);
 })();
 </script>
