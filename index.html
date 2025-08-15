@@ -52,23 +52,6 @@ description: "「离开世界之前 一切都是过程」"
     {% endif %}
   </div>
 
-
-      <!-- 右侧：仅保留“最新文章”，固定在屏幕最右侧 -->
-<section class="card directory-card directory-float">
-  <h6 class="card-title">最新文章</h6>
-  <div class="dir-list">
-    {% assign _sorted = site.posts | sort: 'date' | reverse %}
-    {% for p in _sorted limit: 40 %}
-    <div class="dir-item">
-      <a href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">{{ p.title }}</a>
-      <span class="dir-date">{{ p.date | date: "%m-%d" }}</span>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-
-
     <!-- 时间目录（最新在上） -->
     <section class="card directory-card">
       <h6 class="card-title">最新文章</h6>
@@ -84,3 +67,61 @@ description: "「离开世界之前 一切都是过程」"
     </section>
   </aside>
 </div>
+
+<!-- 书签式右侧文章轨道：仅首页使用 -->
+<div id="bookmark-rail" class="bookmark-rail">
+  <ul class="bm-ul">
+    {% assign posts_sorted = site.posts | sort: 'date' | reverse %}
+    {% for p in posts_sorted limit: 50 %}
+    <li class="bm-item">
+      <a class="bm-link" href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">
+        <!-- 窄标题条（常态只露出它） -->
+        <span class="bm-tab">
+          {{ p.title | truncate: 10, '' }}
+        </span>
+        <!-- 滑出卡片 -->
+        <span class="bm-panel">
+          <span class="bm-title">{{ p.title }}</span>
+          <span class="bm-date">{{ p.date | date: "%Y-%m-%d" }}</span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<script>
+(function(){
+  // —— 滚轮平滑切换 7 根卡（上下半隐的视觉通过裁剪实现）——
+  var rail = document.getElementById('bookmark-rail');
+  if(!rail) return;
+  var ul = rail.querySelector('.bm-ul');
+  var items = ul.querySelectorAll('.bm-item');
+  var H = 56;                 // 每根卡的高度(含间距)，需与 CSS 一致
+  var visible = 7;            // 同时显示 7 根
+  var idx = 0;                // 顶部可见项索引
+  var maxIdx = Math.max(0, items.length - visible);
+
+  function update(){
+    ul.style.transform = 'translateY(' + (-idx * H) + 'px)';
+  }
+  update();
+
+  var lock = false;
+  rail.addEventListener('wheel', function(e){
+    e.preventDefault();
+    if(lock) return;
+    lock = true;
+    var dir = (e.deltaY > 0) ? 1 : -1;
+    idx = Math.min(maxIdx, Math.max(0, idx + dir));
+    update();
+    setTimeout(function(){ lock = false; }, 160); // 控制节流 & 丝滑
+  }, { passive:false });
+
+  // 键盘↑↓也可切换
+  window.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowDown'){ idx = Math.min(maxIdx, idx+1); update(); }
+    if(e.key === 'ArrowUp'){ idx = Math.max(0, idx-1); update(); }
+  });
+})();
+</script>
