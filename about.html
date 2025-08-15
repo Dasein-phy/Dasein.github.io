@@ -15,12 +15,6 @@ multilingual: true
   {{ about_zh | markdownify }}
 </div>
 
-<!-- 英文版（如不需要可移除 multilingual 相关块） -->
-<div class="en post-container">
-  {% capture about_en %}{% include about/en.md %}{% endcapture %}
-  {{ about_en | markdownify }}
-</div>
-
 {% if site.disqus_username %}
   <!-- disqus 评论框 start -->
   <div class="comment">
