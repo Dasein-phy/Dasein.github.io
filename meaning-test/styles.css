@@ -69,3 +69,74 @@
   .mt-app h1{ font-size:24px; }
   .mt-app .grid-4{ grid-template-columns: 1fr; }
 }
+
+/* ===== 修正“横线 + 留白”：覆盖主题给 h2 注入的分隔线 ===== */
+.mt-app h2::before{ content:none !important; border:0 !important; margin:0 !important; }
+.mt-app .card h2{ margin: 6px 0 12px; }      /* 顶部留白≈卡片高度的 1/10 */
+
+/* ===== MBTI 右展开卡片式下拉 ===== */
+.mt-app .mt-tip{ color:#6b7280; margin:6px 0 12px; }
+
+.mt-app .mbti-rail{ display:flex; flex-direction:column; gap:12px; margin:8px 0 14px; }
+.mt-app .mbti-item{ display:flex; align-items:center; gap:12px; }
+.mt-app .mbti-item .axis{ width:56px; color:#374151; font-weight:600; }
+
+.mt-app .mbti-select{
+  position: relative;
+  --w: 240px;                 /* 展开后整体宽度 */
+  --h: 38px;
+  height: var(--h);
+}
+.mt-app .mbti-current{
+  height: var(--h);
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.08);
+  background:#fff;
+  cursor:pointer;
+  min-width: 92px;
+  text-align:left;
+}
+.mt-app .mbti-menu{
+  position:absolute; top:0; left:100%;
+  margin-left: 8px;
+  width: var(--w);
+  height: var(--h);
+  list-style:none; padding:0; margin-top:0;
+  display:flex; align-items:center; gap:8px;
+  background:#fff; border:1px solid rgba(0,0,0,.08);
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+  transform: translateX(-70%);           /* 默认只露出约 30% */
+  opacity:.0; pointer-events:none;
+  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+}
+.mt-app .mbti-select:hover .mbti-menu,
+.mt-app .mbti-select:focus-within .mbti-menu,
+.mt-app .mbti-select.mt-open .mbti-menu{
+  transform: translateX(0); opacity:1; pointer-events:auto;
+}
+.mt-app .mbti-menu li{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:10px;
+  border:1px solid rgba(47,111,128,.18);
+  color:#2f6f80; cursor:pointer; user-select:none;
+}
+.mt-app .mbti-menu li:hover{ background:rgba(47,111,128,.08); }
+.mt-app .mbti-menu li[data-v=""]{ color:#6b7280; border-color:rgba(0,0,0,.12); }
+
+/* 未测：置灰并禁用交互 */
+.mt-app .mbti-rail.disabled{ opacity:.5; pointer-events:none; }
+.mt-app .mbti-none{ margin-top:4px; color:#374151; }
+
+/* 小屏：菜单占满行、向下展开 */
+@media (max-width: 768px){
+  .mt-app .mbti-select{ --w: 100%; }
+  .mt-app .mbti-menu{
+    left:0; margin-left:0; top: calc(var(--h) + 6px);
+    transform: translateY(-6px);
+    width:100%; height:auto; padding:8px;
+    flex-wrap:wrap; gap:8px;
+  }
+}
