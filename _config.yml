@@ -22,9 +22,9 @@ future: true
 # ─────────────────────────────────────────────────────────
 RSS: false
 weibo_username:
-zhihu_username: 
+zhihu_username: <a href="https://www.zhihu.com/people/qian-fan-guo-jin-89-69" target="_blank">冬酱</a>
 github_username: dasein-phy
-twitter_username:
+twitter_username: @FAamadeus
 # facebook_username:
 # linkedin_username:
 
@@ -66,7 +66,7 @@ kramdown:
 # ─────────────────────────────────────────────────────────
 # 评论与互动（默认关闭）
 # ─────────────────────────────────────────────────────────
-disqus_username:
+disqus_username: Dasein
 netease_comment: false
 
 # ─────────────────────────────────────────────────────────
