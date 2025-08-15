@@ -1,0 +1,22 @@
+{
+  "scale_map": {
+    "min": 1.0,
+    "max": 5.0
+  },
+  "alpha_caps": {
+    "full": 0.3,
+    "x": 0.2,
+    "none": 0.0
+  },
+  "x_certainty": {
+    "0": 1.0,
+    "1": 0.67,
+    "2": 0.5,
+    "3plus": 0.4
+  },
+  "thresholds": {
+    "low": 2.5,
+    "mid": 3.5
+  },
+  "conflict_delta": 1.0
+}
