@@ -272,3 +272,43 @@
 /* 4) 保底：任何把子元素当“分隔线”的上边框也关掉 */
 .post-card.special-card > *:first-child{ border-top: none !important; }
 
+/* === 强力清除：作者卡中的所有装饰线、伪元素、顶部多余留白 === */
+#author-card { padding-top: 8px !important; padding-bottom: 16px; }
+
+/* 任何被主题注入的 ::before / ::after（无论加在哪个子元素上）全部关闭 */
+#author-card::before,
+#author-card::after,
+#author-card *::before,
+#author-card *::after{
+  content: none !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* 再保险：如果主题给 h2/h3 之类加“分隔线”，统统去掉 */
+#author-card h1::before,  #author-card h1::after,
+#author-card h2::before,  #author-card h2::after,
+#author-card h3::before,  #author-card h3::after,
+#author-card h4::before,  #author-card h4::after,
+#author-card .post-title::before, #author-card .post-title::after{
+  content: none !important;
+  border: 0 !important;
+}
+
+/* 万一主题给卡片第一个子元素画了顶边，也关掉 */
+#author-card > *:first-child{ border-top: none !important; }
+
+/* 顶部排版更贴顶：头像/标题区域微调 */
+#author-card .sc-head{ margin: 2px 0 6px !important; }
+#author-card .sc-title{ margin-top: 0 !important; }
+
+/* 宽屏下，额外防一次“全局 h2 装饰线”渗透（即便不在 .post-container 内） */
+.masonry .post-card h1::before,
+.masonry .post-card h2::before,
+.masonry .post-card h3::before{
+  content: none !important;
+  border: 0 !important;
+}
+
+
