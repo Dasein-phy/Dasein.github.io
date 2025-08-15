@@ -51,52 +51,43 @@ description: "「离开世界之前 一切都是过程」"
     {% endif %}
   </div>
 
-  <!-- 右列：人物卡 + 时间目录（这一列靠屏幕右侧 1/4） -->
+  <!-- 右列：人物徽章（不规则紧密排布），不再使用“卡片” -->
   <aside class="sidebar-col">
-    <!-- 人物卡（不是卡片就删掉整个 section） -->
-    <section class="card author-card">
-      <div class="author-head">
+    <section class="persona">
+      <div class="persona-head">
         <img class="avatar" src="{{ site.sidebar-avatar | default: '/img/avatar.jpg' | prepend: site.baseurl }}" alt="{{ site.title }}">
         <div class="meta">
           <div class="name">{{ site.title }}</div>
           <div class="desc">{{ site.sidebar-about-description }}</div>
         </div>
       </div>
-      <ul class="sns-vert">
+
+      <!-- 不规则徽章：用多列 masonry 效果 -->
+      <ul class="persona-badges">
         {% if site.zhihu_username_text %}
           {% if site.zhihu_username %}
-            <li><a href="https://www.zhihu.com/people/{{ site.zhihu_username }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_username_text }}</a></li>
+            <li class="chip chip--lg"><a href="https://www.zhihu.com/people/{{ site.zhihu_username }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_username_text }}</a></li>
           {% else %}
-            <li>知乎 · {{ site.zhihu_username_text }}</li>
+            <li class="chip chip--lg">知乎 · {{ site.zhihu_username_text }}</li>
           {% endif %}
         {% endif %}
+
         {% if site.github_username %}
-          <li><a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a></li>
+          <li class="chip"><a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a></li>
         {% endif %}
+
         {% if site.twitter_username %}
-          <li><a href="https://twitter.com/{{ site.twitter_username | remove: '@' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username }}</a></li>
+          <li class="chip chip--md"><a href="https://twitter.com/{{ site.twitter_username | remove: '@' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username }}</a></li>
         {% endif %}
+
         {% if site.bilibili_uid %}
-          <li><a href="https://space.bilibili.com/{{ site.bilibili_uid }}" target="_blank" rel="noopener">Bilibili · {{ site.bilibili_username | default: '个人主页' }}</a></li>
+          <li class="chip"><a href="https://space.bilibili.com/{{ site.bilibili_uid }}" target="_blank" rel="noopener">Bilibili · {{ site.bilibili_username | default: '个人主页' }}</a></li>
         {% endif %}
+
         {% if site.wechat_official_name %}
-          <li class="sns-mute">公众号 · {{ site.wechat_official_name }}</li>
+          <li class="chip chip--sm mute">公众号 · {{ site.wechat_official_name }}</li>
         {% endif %}
       </ul>
-    </section>
-
-    <!-- 时间目录卡（最新在上） -->
-    <section class="card directory-card">
-      <h6 class="card-title">最新文章</h6>
-      <div class="dir-list">
-        {% assign _sorted = site.posts | sort: 'date' | reverse %}
-        {% for p in _sorted limit: 40 %}
-          <div class="dir-item">
-            <a href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">{{ p.title }}</a>
-            <span class="dir-date">{{ p.date | date: "%m-%d" }}</span>
-          </div>
-        {% endfor %}
-      </div>
     </section>
   </aside>
 </div>
@@ -104,8 +95,8 @@ description: "「离开世界之前 一切都是过程」"
 <!-- 最右：书签式文章轨道（只此一处） -->
 <div id="bookmark-rail" class="bookmark-rail">
   <ul class="bm-ul">
-    {% assign _sorted2 = site.posts | sort: 'date' | reverse %}
-    {% for p in _sorted2 %}
+    {% assign _sorted = site.posts | sort: 'date' | reverse %}
+    {% for p in _sorted %}
       <li class="bm-item">
         <a class="bm-link" href="{{ p.url | prepend: site.baseurl }}">
           <span class="bm-panel">
@@ -120,18 +111,28 @@ description: "「离开世界之前 一切都是过程」"
 </div>
 
 <script>
+/* —— 防重渲染：如果某处误又插入了 bookmark-rail，移除多余 —— */
+(function(){
+  var rails = document.querySelectorAll('#bookmark-rail');
+  if (rails.length > 1) {
+    for (var i = 1; i < rails.length; i++) {
+      rails[i].parentNode.removeChild(rails[i]);
+    }
+  }
+})();
+
+/* —— 书签轨道滚动控制（与 CSS 联动） —— */
 (function(){
   var rail = document.getElementById('bookmark-rail');
   if(!rail) return;
 
   var ul = rail.querySelector('.bm-ul');
-  var items = ul.querySelectorAll('.bm-item');
+  var items = ul ? ul.querySelectorAll('.bm-item') : [];
 
-  var H = 56;                 // 每根卡高度(含间距) —— 与 CSS 对齐
-  var visible = 7;            // 一屏显示 7 根，靠裁剪形成上下半隐
+  var H = 56;       // 每根卡高度(含间距)
+  var visible = 7;  // 一屏显示 7 根
   var idx = 0;
 
-  // ≤5 篇时：关闭半隐与滚动
   if(items.length <= 5){
     rail.style.height = 'auto';
     rail.style.paddingTop = '0';
