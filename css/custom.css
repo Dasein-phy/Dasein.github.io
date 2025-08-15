@@ -253,3 +253,5 @@
   }
   .bm-item:hover .bm-panel{ box-shadow: 0 8px 24px rgba(0,0,0,.10); }
 }
+
+.post-preview a:hover{ text-decoration: none; }
