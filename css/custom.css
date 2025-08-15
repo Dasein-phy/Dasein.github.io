@@ -89,3 +89,37 @@
   .sidebar-col{ flex: 0 0 auto; min-width: auto; max-width: none; position:static; }
   .author-card, .directory-card{ position: static; top: auto; }
 }
+
+/* —— 让“最新文章”卡片固定到最右侧 —— */
+.directory-float{
+  position: fixed;
+  right: 24px;         /* 贴近屏幕右边距，可按需要调到 16~40px */
+  top: 120px;          /* 避开顶部导航与大图 */
+  width: 280px;        /* 窄卡宽度 */
+  z-index: 3;          /* 在人物侧栏之上 */
+}
+
+/* 目录卡本身的高级感细节（如果之前已有同名，以下作为补强） */
+.directory-card{ padding:16px; }
+.directory-card .card-title{
+  margin:0 0 8px; font-size:12px; letter-spacing:.12em;
+  text-transform:uppercase; color:#6b7280;
+}
+.dir-list{ max-height: 66vh; overflow:auto; padding-right:4px; }
+.dir-item{
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding:10px 12px; border-radius:12px;
+  transition: background .15s ease, transform .15s ease;
+}
+.dir-item + .dir-item{ margin-top:6px; }
+.dir-item:hover{ background: rgba(47,111,128,.08); }
+.dir-item a{
+  color:#1f2937; text-decoration:none; flex:1; margin-right:8px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dir-date{ color:#6b7280; font-size:12px; }
+
+/* 小屏自动回归到正常流；防止遮挡 */
+@media (max-width: 992px){
+  .directory-float{ position: static; width: auto; margin: 12px 0; }
+}
