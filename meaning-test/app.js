@@ -1,4 +1,3 @@
-
 const cfgPath = './app.config.json';
 const mbtiPriorPath = './mbti.prior.config.json';
 const itemsPath = './items.baseline.json';
@@ -46,37 +45,96 @@ function init(){
 
   $('#download').addEventListener('click', downloadJSON);
   $('#restart').addEventListener('click', ()=>location.reload());
+
+  // 绑定 MBTI 卡片式下拉交互
+  bindMBTI();
 }
 
+/* ===================== MBTI 读取（卡片式四轴 + 未测开关） ===================== */
 function readMBTIProbs(){
-  // E/I radio
-  const ei = [...$$('input[name="ei"]')].find(x=>x.checked)?.value ?? '';
-  const ns = $('#ns').value || '';
-  const ft = $('#ft').value || '';
-  const pj = $('#pj').value || '';
+  // “未测”直接不使用先验
+  if ($('#mbti-none') && $('#mbti-none').checked) return null;
 
-  if(ei==='' && ns==='' && ft==='' && pj===''){
-    return null; // untested => no prior
-  }
+  const getV = id => (document.querySelector('.mbti-select[data-target="'+id+'"]')?.getAttribute('data-value') || '');
+  const ei = getV('ei');   // E/I
+  const ns = getV('ns');   // N/S
+  const ft = getV('ft');   // F/T
+  const pj = getV('pj');   // P/J
+
+  // 全空 => 不使用先验
+  if(ei==='' && ns==='' && ft==='' && pj==='') return null;
+
   function pairProb(v, a, b){
-    if(v==='') return null; // unknown axis
+    if(v==='')  return null;
     if(v==='X') return {[a]:0.5, [b]:0.5};
-    if(v===a) return {[a]:1.0, [b]:0.0};
-    if(v===b) return {[a]:0.0, [b]:1.0};
+    if(v===a)  return {[a]:1.0, [b]:0.0};
+    if(v===b)  return {[a]:0.0, [b]:1.0};
     return null;
   }
+
+  // 注意：先验里 A/C/D 的公式使用 I/E、N/S、F/T、P/J 的方向，
+  // 这里把四轴都转成 {I,E,N,S,F,T,P,J} 概率。
   const eiP = pairProb(ei,'I','E') || {I:0.5,E:0.5};
   const nsP = pairProb(ns,'N','S') || {N:0.5,S:0.5};
   const ftP = pairProb(ft,'F','T') || {F:0.5,T:0.5};
   const pjP = pairProb(pj,'P','J') || {P:0.5,J:0.5};
 
-  // count X
   const xCount = [ei,ns,ft,pj].filter(v=>v==='X').length;
-  const unset = [ei,ns,ft,pj].filter(v=>v==='').length;
+  const unset  = [ei,ns,ft,pj].filter(v=>v==='').length;
 
-  return {prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset}};
+  return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
 }
 
+/* 绑定卡片式下拉：点击/悬停展开，点击选项写入 data-value 并更新按钮文案；“未测”勾选时清空并禁用 */
+function bindMBTI(){
+  // 选项点击：写值 + 改按钮文本
+  document.querySelectorAll('.mbti-select .mbti-menu li').forEach(li=>{
+    li.addEventListener('click', function(){
+      const val = this.getAttribute('data-v');
+      const wrap = this.closest('.mbti-select');
+      wrap.setAttribute('data-value', val);
+      wrap.querySelector('.mbti-current').textContent = (val==='' ? '未填' : val);
+      wrap.classList.remove('mt-open');
+    });
+  });
+
+  // 点击当前值也能展开（移动端友好）
+  document.querySelectorAll('.mbti-select .mbti-current').forEach(btn=>{
+    btn.addEventListener('click', function(e){
+      const wrap = this.closest('.mbti-select');
+      wrap.classList.toggle('mt-open');
+      e.stopPropagation();
+    });
+  });
+
+  // 点击外部区域 => 收起所有打开的
+  document.addEventListener('click', function(e){
+    document.querySelectorAll('.mbti-select.mt-open').forEach(w=>{
+      if(!w.contains(e.target)) w.classList.remove('mt-open');
+    });
+  });
+
+  // “我没有做过 MBTI 测试”
+  const none = document.getElementById('mbti-none');
+  if(none){
+    none.addEventListener('change', function(){
+      const rail = document.querySelector('.mbti-rail');
+      if(this.checked){
+        rail.classList.add('disabled');
+        document.querySelectorAll('.mbti-select').forEach(s=>{
+          s.setAttribute('data-value','');
+          const cur = s.querySelector('.mbti-current');
+          if(cur) cur.textContent = '未填';
+          s.classList.remove('mt-open');
+        });
+      }else{
+        rail.classList.remove('disabled');
+      }
+    });
+  }
+}
+
+/* ===================== 问卷渲染/读取与计分（保持不变） ===================== */
 function renderSurvey(){
   const form = $('#surveyForm');
   form.innerHTML = '';
@@ -116,7 +174,7 @@ function computeSurveyDims(answers){
   for(const it of ITEMS){
     const raw = answers[it.id];
     let score = mapLikertToFive(raw);
-    if(it.reverse) score = mapLikertToFive(8 - raw); // reverse before mapping also works; here compliant with text
+    if(it.reverse) score = mapLikertToFive(8 - raw);
     dims[it.dim].push(score * (it.weight||1.0));
   }
   return {
@@ -128,29 +186,25 @@ function computeSurveyDims(answers){
 
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
-  const x = meta.xCount + meta.unset; // treat unset as weaker than X? Here merge for simplicity
+  const x = meta.xCount + meta.unset;
   let alpha_base = 0.0;
   if(meta.unset===4) return 0.0;
   if(x===0) alpha_base = CFG.alpha_caps.full;
   else alpha_base = CFG.alpha_caps.x;
-  // certainty
+
   let certainty = 1.0;
-  if(x===1) certainty = CFG.x_certainty["1"];
+  if(x===1)      certainty = CFG.x_certainty["1"];
   else if(x===2) certainty = CFG.x_certainty["2"];
-  else if(x>=3) certainty = CFG.x_certainty["3plus"];
+  else if(x>=3)  certainty = CFG.x_certainty["3plus"];
   return alpha_base * certainty;
 }
 
 function priorsFromProbs(p){
   const {A0,C0,D0} = MBTI.baseline;
   const cA = MBTI.coeff.A, cC = MBTI.coeff.C, cD = MBTI.coeff.D;
-  // helpers
   const dNS = (p.N - p.S), dIE = (p.I - p.E), dPJ = (p.P - p.J), dTF = (p.T - p.F);
-  // A
   let A = A0 + cA["N-S"]*dNS + cA["I-E"]*dIE + cA["P-J"]*dPJ + cA["N*T"]*(p.N*p.T) + cA["S*J"]*(p.S*p.J);
-  // C
   let C = C0 + cC["J-P"]*(p.J - p.P) + cC["F-T"]*(p.F - p.T) + cC["S-N"]*(p.S - p.N) + cC["I-E"]*dIE + cC["S*J"]*(p.S*p.J);
-  // D
   let D = D0 + cD["N-S"]*dNS + cD["T-F"]*dTF + cD["P-J"]*dPJ + cD["F*J"]*(p.F*p.J) + cD["N*P"]*(p.N*p.P);
   return {A_p:clip(A), C_p:clip(C), D_p:clip(D)};
 }
@@ -172,7 +226,6 @@ function scoreAll(read){
     C_final = fuse(C_p, dims.C_s, alpha);
     D_final = fuse(D_p, dims.D_s, alpha);
   }
-  // 简化：此原型不含 S/L/M 分量，后续分支题库接入时再扩展
   const report = {
     A: +A_final.toFixed(2),
     C: +C_final.toFixed(2),
@@ -180,7 +233,6 @@ function scoreAll(read){
     prior: mbti ? {A_p, C_p, D_p, alpha: +alpha.toFixed(3)} : null,
     survey_raw: dims
   };
-  // 粗略宏类型判定（示例）
   const tLow = CFG.thresholds.low, tMid = CFG.thresholds.mid;
   let macro = null;
   if(report.A < tLow){
@@ -188,9 +240,9 @@ function scoreAll(read){
   }else if(report.A >= tMid && report.D >= tMid){
     macro = (report.C <= tLow) ? "C0 去魅—“解”候选" : "C1/C2 去魅—待细分";
   }else if(report.A >= 3.0 && report.D <= tMid){
-    if(report.C >= 4.0) macro = "B0 建构—高建构依赖";
+    if(report.C >= 4.0)      macro = "B0 建构—高建构依赖";
     else if(report.C >= 3.0) macro = "B1 建构—局部建构（候选）";
-    else macro = "B3 建构—功能主义姿态（候选）";
+    else                     macro = "B3 建构—功能主义姿态（候选）";
   }else{
     macro = "B2 建构—透明虚构（候选）";
   }
@@ -219,7 +271,6 @@ function renderReport(res){
   lines.push(`<p>宏类型初判：<span class="badge">${res.macro_hint}</span></p>`);
   wrap.innerHTML = lines.join('\n');
   $('#report').classList.remove('hidden');
-  // store
   window.__meaningReport = res;
 }
 
