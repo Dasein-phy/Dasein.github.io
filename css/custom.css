@@ -225,14 +225,10 @@
   margin-left: 8px;
 }
 
-/* 悬停：卡片从右向左“滑入”，并轻微浮起 */
+/* 悬停：完全滑入可视 */
 .bm-item:hover .bm-panel{
-  transform: translateX(-260px); /* 刚好全部滑入可视 */
+  transform: translateX(-260px);
   box-shadow: 0 16px 40px rgba(31, 107, 123, .18);
-}
-.bm-item:hover .bm-tab{
-  background: rgba(47,111,128,.20);
-  border-color: rgba(47,111,128,.28);
 }
 
 /* 小屏：关闭固定定位，回落为普通流布局 */
