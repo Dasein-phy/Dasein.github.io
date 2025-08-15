@@ -212,3 +212,38 @@
     border-radius:14px; transform:none !important; pointer-events:auto;
   }
 }
+
+/* —— 彻底移除 special-card 顶部任何分隔线/伪元素 —— */
+.post-card.special-card,
+.special-card{
+  position: relative;
+}
+
+.post-card.special-card > hr,
+.special-card > hr,
+.post-card.special-card hr:first-child,
+.special-card hr:first-child{
+  display: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
+
+/* 某些主题会用伪元素画横线：全部关掉 */
+.post-card.special-card::before,
+.post-card.special-card::after,
+.special-card::before,
+.special-card::after,
+.post-card.special-card .post-title::before,
+.special-card .post-title::before,
+.post-card.special-card .post-title::after,
+.special-card .post-title::after{
+  content: none !important;
+  display: none !important;
+  border: 0 !important;
+  height: 0 !important;
+}
+
+/* 如果横线其实是内边框/上边框，也一起关掉 */
+.post-card.special-card{
+  border-top: none !important;
+}
