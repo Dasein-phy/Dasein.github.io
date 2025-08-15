@@ -32,6 +32,16 @@ bilibili_url: "https://space.bilibili.com/你的ID"
 
 wechat_name: 心哲空间          # 只显示文字，不放二维码不放链接
 
+# —— 右侧人物卡需要的社交字段 —— 
+zhihu_username_text: 冬酱
+zhihu_username: qian-fan-guo-jin-89-69   # 若不想放 slug，可删掉这一行
+github_username: dasein-phy
+twitter_username: FAamadeus               # 不要带 @
+bilibili_uid: 62861274                     # 如有就填 UID，没有可留空
+bilibili_username: 冬酱哒                 # 可选
+wechat_official_name: 心哲空间            # 只显示文字，不放二维码
+
+
 # ─────────────────────────────────────────────────────────
 # 构建设置 / Build
 # ─────────────────────────────────────────────────────────
