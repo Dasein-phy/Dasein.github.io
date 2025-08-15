@@ -1,55 +1,87 @@
 ---
-layout: page
+layout: default
+title: 首页
 description: "「离开世界之前 一切都是过程」"
 ---
 
-{%- comment -%}
-优先使用 paginator.posts；若未启用分页，回退到 site.posts
-{%- endcomment -%}
-{% assign posts_coll = paginator.posts | default: site.posts %}
+{% include intro-header.html type='page' short=true %}
 
-{% for post in posts_coll %}
-<div class="post-preview">
-  <a href="{{ post.url | prepend: site.baseurl }}">
-    <h2 class="post-title">{{ post.title }}</h2>
-    {% if post.subtitle %}
-      <h3 class="post-subtitle">{{ post.subtitle }}</h3>
-    {% endif %}
-    <div class="post-content-preview">
-      {%- if post.lang == 'en' -%}
-        {{ post.content | strip_html | truncate: 320 }}
-      {%- else -%}
-        {{ post.content | strip_html | truncate: 220 }}
-      {%- endif -%}
+<div class="container home-grid">
+  <div class="row">
+    <!-- 左侧：卡片式文章流 -->
+    <div class="col-lg-7 col-md-8">
+      {% assign posts_sorted = paginator.posts | default: site.posts | sort: 'date' | reverse %}
+
+      {% for post in posts_sorted %}
+      <article class="post-card">
+        <a class="post-card__link" href="{{ post.url | prepend: site.baseurl }}">
+          {% if post.cover or post.header-img %}
+            <div class="post-card__cover" style="background-image:url('{{ post.cover | default: post.header-img | prepend: site.baseurl }}');"></div>
+          {% endif %}
+          <div class="post-card__body">
+            <h2 class="post-card__title">{{ post.title }}</h2>
+            {% if post.subtitle %}
+              <h3 class="post-card__subtitle">{{ post.subtitle }}</h3>
+            {% endif %}
+            <p class="post-card__excerpt">
+              {{ post.content | strip_html | truncate: 160 }}
+            </p>
+            <div class="post-card__meta">
+              <span class="post-card__date">{{ post.date | date: "%Y-%m-%d" }}</span>
+              {% if post.tags and post.tags.size > 0 %}
+              <span class="post-card__tags">
+                {% for t in post.tags limit:3 %}
+                  <span class="tag-chip">{{ t }}</span>
+                {% endfor %}
+                {% if post.tags.size > 3 %}<span class="tag-chip more">…</span>{% endif %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+      </article>
+      {% endfor %}
+
+      <!-- 分页 -->
+      {% if paginator.total_pages > 1 %}
+      <ul class="pager pager--spaced">
+        {% if paginator.previous_page %}
+        <li class="previous">
+          <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
+        </li>
+        {% endif %}
+        {% if paginator.next_page %}
+        <li class="next">
+          <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
+        </li>
+        {% endif %}
+      </ul>
+      {% endif %}
     </div>
-  </a>
-  <p class="post-meta">
-    发布于 {{ post.date | date: "%Y-%m-%d" }}
-    {% if post.author %} · 作者：{{ post.author }}{% endif %}
-  </p>
+
+    <!-- 中间：保留原有侧栏（人物/标签/友链） -->
+    <aside class="col-lg-3 col-md-4 sidebar-container">
+      {% include featured-tags.html bottom=true %}
+      {% include friends.html %}
+    </aside>
+
+    <!-- 最右：按时间排序的目录（Timeline / 目录） -->
+    <aside class="col-lg-2 d-none d-lg-block right-timeline">
+      <div class="timeline-card">
+        <h5 class="timeline-title">目录</h5>
+        <ul class="timeline-list">
+          {% assign all_posts = site.posts | sort: 'date' | reverse %}
+          {% for p in all_posts %}
+          <li class="timeline-item">
+            <a href="{{ p.url | prepend: site.baseurl }}" class="timeline-link" title="{{ p.title }}">
+              <span class="timeline-dot"></span>
+              <span class="timeline-date">{{ p.date | date: "%y-%m-%d" }}</span>
+              <span class="timeline-text">{{ p.title }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+  </div>
 </div>
-<hr>
-{% endfor %}
-
-{%- comment -%}
-分页导航（仅在启用 jekyll-paginate 时出现）
-{%- endcomment -%}
-{% if paginator and paginator.total_pages > 1 %}
-<ul class="pager">
-  {% if paginator.previous_page %}
-    <li class="previous">
-      <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">← 上一页</a>
-    </li>
-  {% endif %}
-  {% if paginator.next_page %}
-    <li class="next">
-      <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 →</a>
-    </li>
-  {% endif %}
-</ul>
-{% endif %}
-
-{%- comment -%}
-如需“阅读全文”样式按钮，可在 post 模板里或这里追加：
-<a class="btn btn-default" href="{{ post.url | prepend: site.baseurl }}">阅读全文</a>
-{%- endcomment -%}
