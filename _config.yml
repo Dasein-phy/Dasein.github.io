@@ -1,56 +1,61 @@
-# Site settings
-title: Hux Blog
+# ─────────────────────────────────────────────────────────
+# 站点信息 / Site
+# ─────────────────────────────────────────────────────────
+title: 心哲空间
 SEOTitle: 心哲空间 | Dasein Blog
-header-img: img/home-bg.jpg
-email: 1780amadeus@gmail.com
-description: "这里是心哲空间，我们会在这里发布一切关于心理、哲学，一切关于人与世界的内容"
-keyword: "心理，哲学，社科，文字冒险，游戏，观念，海德格尔，尼采，意义，自由，理性，感性，维特根斯坦，禅宗，后朋克，思想"
-url: "https://huangxuan.me" # your host, for absolute URL
-baseurl: "" # for example, '/blog' if your blog hosted on 'host/blog'
+header-img: /img/home-bg.jpg
 
-# Publish posts or collection documents with a future date.
+email: 1780amadeus@gmail.com
+description: "这里是心哲空间，我们将发布与心理学、哲学及人与世界相关的研究与评论。"
+keyword: "心理学, 哲学, 社会科学, 结构生成论, 原初意义论, 天平论, 元行为心理学, 海德格尔, 尼采, 维特根斯坦, 禅宗, 后朋克, 意义, 自由"
+
+# 你的 GitHub Pages 项目页地址：
+# url 为用户主页域名；baseurl 为仓库路径前缀（必须以斜杠开头）
+url: "https://dasein-phy.github.io"
+baseurl: "/Dasein.github.io"
+
+# 未来日期的文章是否发布
 future: true
 
-# SNS settings
+# ─────────────────────────────────────────────────────────
+# 社交帐号（留空表示不展示）
+# ─────────────────────────────────────────────────────────
 RSS: false
-weibo_username: huxpro
-zhihu_username: huxpro
-github_username: huxpro
-twitter_username: huxpro
-#facebook_username:  huxpro
-#linkedin_username:  firstname-lastname-idxxxx
+weibo_username:
+zhihu_username: 
+github_username: dasein-phy
+twitter_username:
+# facebook_username:
+# linkedin_username:
 
-# Build settings
-# from 2016, 'pygments' is unsupported on GitHub Pages. Use 'rouge' for highlighting instead.
+# ─────────────────────────────────────────────────────────
+# 构建设置 / Build
+# ─────────────────────────────────────────────────────────
 highlighter: rouge
 permalink: pretty
 paginate: 10
+
 exclude:
-  [
-    "less",
-    "node_modules",
-    "Gruntfile.js",
-    "package.json",
-    "README.md",
-    "README.zh.md",
-  ]
-anchorjs: true # if you want to customize anchor. check out line:181 of `post.html`
-# If you have timezone issue (e.g. #68) in China, uncomment to use this:
-#timezone: CN
+  - less
+  - node_modules
+  - Gruntfile.js
+  - package.json
+  - README.md
+  - README.zh.md
 
-# Gems
-# from PR#40, to support local preview for Jekyll 3.0
-# make sure you have this gem installed
-# `$ gem install jekyll-paginate`
-plugins: [jekyll-paginate]
+anchorjs: true
+# 如需固定到中国时区可开启：
+# timezone: Asia/Shanghai
 
-# Markdown settings
-# replace redcarpet to kramdown,
-# although redcarpet can auto highlight code, the lack of header-id make the catalog impossible, so I switch to kramdown
-# document: http://jekyllrb.com/docs/configuration/#kramdown
+plugins:
+  - jekyll-paginate
+
+# ─────────────────────────────────────────────────────────
+# Markdown
+# ─────────────────────────────────────────────────────────
 markdown: kramdown
 kramdown:
-  input: GFM # use Github Flavored Markdown !important
+  input: GFM
   syntax_highlighter_opts:
     span:
       line_numbers: false
@@ -58,45 +63,43 @@ kramdown:
       line_numbers: true
       start_line: 1
 
-# Disqus settings
-disqus_username: hux
-
-# Netease settings
+# ─────────────────────────────────────────────────────────
+# 评论与互动（默认关闭）
+# ─────────────────────────────────────────────────────────
+disqus_username:
 netease_comment: false
 
-# Analytics settings
-# Baidu Analytics
-# ba_track_id: [your track id]
+# ─────────────────────────────────────────────────────────
+# 分析统计（默认关闭；如需启用请填写真实 ID）
+# ─────────────────────────────────────────────────────────
+# ba_track_id:
+# ga_track_id: ""
+# ga_domain:
 
-# Google Analytics
-ga_track_id: "UA-49627206-1" # Format: UA-xxxxxx-xx
-ga_domain: huangxuan.me
+# ─────────────────────────────────────────────────────────
+# 侧边栏
+# ─────────────────────────────────────────────────────────
+sidebar: true
+sidebar-about-description: "严肃写作与系统建构：结构生成论—原初意义论—天平论—元行为心理学"
+# 用于 Open Graph/Twitter 的预览图，建议放一张站内图像
+sidebar-avatar: /img/home-bg.jpg
 
-# Sidebar settings
-sidebar: true # whether or not using Sidebar.
-sidebar-about-description: "生命的一切都关于爱，爱与被爱 <br> React Team @ Meta"
-sidebar-avatar: https://github.com/Huxpro.png # use absolute URL, seeing it's used in both `/` and `/about/`
+# ─────────────────────────────────────────────────────────
+# 标签区
+# ─────────────────────────────────────────────────────────
+featured-tags: true
+featured-condition-size: 1
 
-# Featured Tags
-featured-tags: true # whether or not using Feature-Tags
-featured-condition-size: 1 # A tag will be featured if the size of it is more than this condition value
-
-# Progressive Web Apps
-chrome-tab-theme-color: "#000000"
+# ─────────────────────────────────────────────────────────
+# PWA / 主题色（与你的品牌色一致）
+# ─────────────────────────────────────────────────────────
+chrome-tab-theme-color: "#718771"
 service-worker: true
 
-# MathJax rendering for layout:page (e.g. post preview)
+# 如果需要数学公式支持再开启
 page-mathjax: false
 
-# Friends
-friends:
-  [
-    { title: "乱序（Midare）", href: "http://mida.re/" },
-    { title: "Ebn Zhang", href: "https://ebnbin.dev/" },
-    { title: "Kun Qian", href: "http://kunq.me" },
-    { title: "Sherry Woo", href: "https://sherrywoo.me/" },
-    { title: "SmdCn", href: "http://blog.smdcn.net" },
-    { title: "JiyinYiyong", href: "http://tiye.me/" },
-    { title: "DHong Say", href: "http://dhong.co" },
-    { title: "尹峰以为", href: "http://ingf.github.io/" },
-  ]
+# ─────────────────────────────────────────────────────────
+# 友链（可为空）
+# ─────────────────────────────────────────────────────────
+friends: []
