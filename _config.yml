@@ -20,18 +20,17 @@ future: true
 # 社交帐号
 # ─────────────────────────────────────────────────────────
 # 社交帐号
-RSS: false
-weibo_username:
-zhihu_username: qian-fan-guo-jin-89-69     # 只写知乎个人页最后那段短链，不要中文、不含 https
-zhihu_display_name: 冬酱                     # 展示名（页面上会显示“知乎 · 冬酱”）
+zhihu_name: 冬酱
+zhihu_url: "https://www.zhihu.com/people/qian-fan-guo-jin-89-69"
+
 github_username: dasein-phy
-github_display_name: dasein-phy
-twitter_username: FAamadeus                 # 不要写 @
-twitter_display_name: FAamadeus
-bilibili_uid: 62861274                      # 如果有，填数字 UID，比如 12345678
-bilibili_display_name: 冬酱哒
-wechat_official: 心哲空间                    # 如果有公众号名，填名字，如：心哲空间
-wechat_qr: /img/wechat-qr.png               # 若有二维码，放路径；没有可留空
+
+twitter_username: FAamadeus   # 只填用户名，不要带 @
+
+bilibili_name: 冬酱哒
+bilibili_url: "https://space.bilibili.com/你的ID"
+
+wechat_name: 心哲空间          # 只显示文字，不放二维码不放链接
 
 # ─────────────────────────────────────────────────────────
 # 构建设置 / Build
