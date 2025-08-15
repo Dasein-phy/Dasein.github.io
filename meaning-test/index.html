@@ -27,30 +27,76 @@ permalink: /meaning-test/
       </section>
 
       <section id="mbti" class="card hidden">
-        <h2>MBTI（可选）</h2>
-        <p>在 MBTI 测试中，您是：</p>
-        <div class="mbti-row">
-          <label><input type="radio" name="ei" value="I"> i 人</label>
-          <label><input type="radio" name="ei" value="E"> e 人</label>
-          <label><input type="radio" name="ei" value="X"> i/e 人</label>
-          <label><input type="radio" name="ei" value=""> 我没有做过 MBTI 测试</label>
-        </div>
-        <div class="mbti-row">
-          <label>E/I 不确定请选 X；未测请选择留空。其余三轴（N/S, F/T, J/P）可选填：</label>
-        </div>
-        <div class="mbti-row grid-4">
-          <div><label>N/S：
-            <select id="ns"><option value="">未填</option><option value="N">N</option><option value="S">S</option><option value="X">X</option></select>
-          </label></div>
-          <div><label>F/T：
-            <select id="ft"><option value="">未填</option><option value="F">F</option><option value="T">T</option><option value="X">X</option></select>
-          </label></div>
-          <div><label>P/J：
-            <select id="pj"><option value="">未填</option><option value="P">P</option><option value="J">J</option><option value="X">X</option></select>
-          </label></div>
-        </div>
-        <button id="toSurvey" class="btn">进入问卷</button>
-      </section>
+  <h2>MBTI（可选）</h2>
+  <p class="mt-tip">请选择四个维度（可留空或选 X）。右侧卡片式菜单可点击/悬停展开。</p>
+
+  <div class="mbti-rail">
+
+    <!-- E / I -->
+    <div class="mbti-item" data-axis="ei">
+      <label class="axis">E/I</label>
+      <div class="mbti-select" data-target="ei" data-value="">
+        <button class="mbti-current" type="button">未填</button>
+        <ul class="mbti-menu">
+          <li data-v="">未填</li>
+          <li data-v="E">E</li>
+          <li data-v="I">I</li>
+          <li data-v="X">X</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- N / S -->
+    <div class="mbti-item" data-axis="ns">
+      <label class="axis">N/S</label>
+      <div class="mbti-select" data-target="ns" data-value="">
+        <button class="mbti-current" type="button">未填</button>
+        <ul class="mbti-menu">
+          <li data-v="">未填</li>
+          <li data-v="N">N</li>
+          <li data-v="S">S</li>
+          <li data-v="X">X</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- F / T -->
+    <div class="mbti-item" data-axis="ft">
+      <label class="axis">F/T</label>
+      <div class="mbti-select" data-target="ft" data-value="">
+        <button class="mbti-current" type="button">未填</button>
+        <ul class="mbti-menu">
+          <li data-v="">未填</li>
+          <li data-v="F">F</li>
+          <li data-v="T">T</li>
+          <li data-v="X">X</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- P / J -->
+    <div class="mbti-item" data-axis="pj">
+      <label class="axis">P/J</label>
+      <div class="mbti-select" data-target="pj" data-value="">
+        <button class="mbti-current" type="button">未填</button>
+        <ul class="mbti-menu">
+          <li data-v="">未填</li>
+          <li data-v="P">P</li>
+          <li data-v="J">J</li>
+          <li data-v="X">X</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 未测开关 -->
+    <label class="mbti-none">
+      <input type="checkbox" id="mbti-none"> 我没有做过 MBTI 测试
+    </label>
+  </div>
+
+  <button id="toSurvey" class="btn">进入问卷</button>
+</section>
+
 
       <section id="survey" class="card hidden">
         <h2>基线问卷</h2>
