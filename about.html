@@ -1,14 +1,30 @@
 ---
 layout: page
-title: "“我”"
-description: "「什么的一切都关于爱，爱与被爱」"
+title: "关于"
+description: "「生命的一切都关于爱，爱与被爱」"
 header-img: "/img/bg-me-2022.jpg"
 header-mask: 0.3
 multilingual: false
 ---
 
-<!-- 中文 About 内容 -->
-<div class="zh post-container">
-  {% capture about_zh %}{% include about/zh.md %}{% endcapture %}
-  {{ about_zh | markdownify }}
+<!-- 说明：此文件不使用任何 {% include %}，以避免多语言残留导致的构建失败 -->
+
+<div class="post-container">
+  <!-- 若需侧栏头像，请确保 _config.yml 中已设置 sidebar-avatar，且该图存在于 /img/ 下 -->
+  <p>
+    这里是心哲空间。我们关注：结构生成论—原初意义论—天平论—元行为心理学的搭建与应用，
+    以及围绕意义、自由、建构/去魅的系统讨论。本站用于发布论文草案、测试项目与长文。
+  </p>
+
+  <h3 id="contact">联系</h3>
+  <ul>
+    <li>邮箱：{{ site.email }}</li>
+    <li>GitHub：<a href="https://github.com/{{ site.github_username }}">{{ site.github_username }}</a></li>
+  </ul>
+
+  <h3 id="notice">站点说明</h3>
+  <ul>
+    <li>本页为单语中文版本，未启用任何多语言切换。</li>
+    <li>若先前引入的多语言/选择器仍在其他模板中，请逐步移除。</li>
+  </ul>
 </div>
