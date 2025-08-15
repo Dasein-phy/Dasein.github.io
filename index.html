@@ -52,19 +52,22 @@ description: "「离开世界之前 一切都是过程」"
     {% endif %}
   </div>
 
-  <!-- 右侧：人物卡 + 文章目录（细条卡） -->
-  <aside class="sidebar-col">
-    <!-- 人物卡 -->
-    <section class="card author-card">
-      <div class="author-head">
-        <img class="avatar" src="{{ site.sidebar-avatar | default: '/img/avatar.jpg' | prepend: site.baseurl }}" alt="avatar">
-        <div class="meta">
-          <div class="name">{{ site.title }}</div>
-          <div class="desc">{{ site.sidebar-about-description }}</div>
-        </div>
-      </div>
-      {% include sns-links.html %}
-    </section>
+
+      <!-- 右侧：仅保留“最新文章”，固定在屏幕最右侧 -->
+<section class="card directory-card directory-float">
+  <h6 class="card-title">最新文章</h6>
+  <div class="dir-list">
+    {% assign _sorted = site.posts | sort: 'date' | reverse %}
+    {% for p in _sorted limit: 40 %}
+    <div class="dir-item">
+      <a href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">{{ p.title }}</a>
+      <span class="dir-date">{{ p.date | date: "%m-%d" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+
 
     <!-- 时间目录（最新在上） -->
     <section class="card directory-card">
