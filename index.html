@@ -68,60 +68,62 @@ description: "「离开世界之前 一切都是过程」"
   </aside>
 </div>
 
-<!-- 书签式右侧文章轨道：仅首页使用 -->
-<div id="bookmark-rail" class="bookmark-rail">
-  <ul class="bm-ul">
-    {% assign posts_sorted = site.posts | sort: 'date' | reverse %}
-    {% for p in posts_sorted limit: 50 %}
-    <li class="bm-item">
-      <a class="bm-link" href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">
-        <!-- 窄标题条（常态只露出它） -->
-        <span class="bm-tab">
-          {{ p.title | truncate: 10, '' }}
-        </span>
-        <!-- 滑出卡片 -->
-        <span class="bm-panel">
-          <span class="bm-title">{{ p.title }}</span>
-          <span class="bm-date">{{ p.date | date: "%Y-%m-%d" }}</span>
-        </span>
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-
 <script>
 (function(){
-  // —— 滚轮平滑切换 7 根卡（上下半隐的视觉通过裁剪实现）——
   var rail = document.getElementById('bookmark-rail');
   if(!rail) return;
+
   var ul = rail.querySelector('.bm-ul');
   var items = ul.querySelectorAll('.bm-item');
-  var H = 56;                 // 每根卡的高度(含间距)，需与 CSS 一致
-  var visible = 7;            // 同时显示 7 根
-  var idx = 0;                // 顶部可见项索引
-  var maxIdx = Math.max(0, items.length - visible);
+
+  var H = 56;                 // 每根卡高度(含间距)，需与 CSS 一致
+  var visible = 7;            // 一屏显示 7 根（上下“半隐”由裁剪产生）
+  var idx = 0;
+  var lock = false;
+
+  // —— 如果文章很少（≤5），关闭“半隐”和滚动 —— //
+  if(items.length <= 5){
+    rail.style.height = 'auto';
+    rail.style.paddingTop = '0';
+    rail.style.paddingBottom = '0';
+    rail.style.overflow = 'visible';
+  }
+
+  function maxIdx(){
+    if(items.length <= visible) return 0;
+    return Math.max(0, items.length - visible);
+  }
 
   function update(){
     ul.style.transform = 'translateY(' + (-idx * H) + 'px)';
   }
   update();
 
-  var lock = false;
+  function scrollBy(dir){
+    var m = maxIdx();
+    if(m === 0) return;            // 少量文章：禁用滚动
+    idx = Math.min(m, Math.max(0, idx + dir));
+    update();
+  }
+
   rail.addEventListener('wheel', function(e){
+    var m = maxIdx();
+    if(m === 0) return;            // 少量文章：直接透传滚轮
     e.preventDefault();
     if(lock) return;
     lock = true;
     var dir = (e.deltaY > 0) ? 1 : -1;
-    idx = Math.min(maxIdx, Math.max(0, idx + dir));
-    update();
-    setTimeout(function(){ lock = false; }, 160); // 控制节流 & 丝滑
+    scrollBy(dir);
+    setTimeout(function(){ lock = false; }, 160);
   }, { passive:false });
 
-  // 键盘↑↓也可切换
+  // 键盘 ↑↓ 也可切换（仅当可滚动时）
   window.addEventListener('keydown', function(e){
-    if(e.key === 'ArrowDown'){ idx = Math.min(maxIdx, idx+1); update(); }
-    if(e.key === 'ArrowUp'){ idx = Math.max(0, idx-1); update(); }
+    var m = maxIdx();
+    if(m === 0) return;
+    if(e.key === 'ArrowDown'){ scrollBy(1); }
+    if(e.key === 'ArrowUp'){ scrollBy(-1); }
   });
 })();
 </script>
+
