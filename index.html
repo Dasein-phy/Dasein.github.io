@@ -3,154 +3,126 @@ layout: page
 description: "「离开世界之前 一切都是过程」"
 ---
 
-<div class="dz-layout post-list is-masonry">
-  <!-- 瀑布流容器：人物卡 + 文章卡（同风格） -->
-  <div id="masonry" class="masonry">
+<div class="dz-layout post-list">
+  <div class="post-col">
 
-    <!-- 人物卡：样式与文章卡一致 -->
-    <article class="m-item card post-card">
-      <a class="post-link" href="{{ site.baseurl }}/about/">
-        <h2 class="post-title">心哲空间</h2>
-        <h3 class="post-subtitle">{{ site.sidebar-about-description }}</h3>
-        <p class="excerpt">
-          GitHub · {{ site.github_username }}
-          {% if site.twitter_username %}　·　Twitter · {{ site.twitter_username }}{% endif %}
-          {% if site.zhihu_username_text %}　·　知乎 · {{ site.zhihu_username_text }}{% endif %}
-          {% if site.wechat_official_name %}　·　公众号 · {{ site.wechat_official_name }}{% endif %}
-        </p>
-      </a>
-      <div class="post-meta"><span>关于本站 / Profile</span></div>
-    </article>
+    <!-- 瀑布流：作者 special-card + 文章卡片 -->
+    <div class="masonry">
 
-    {% for post in paginator.posts %}
-    <article class="m-item card post-card">
-      <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">
-        <h2 class="post-title">{{ post.title }}</h2>
-        {% if post.subtitle %}
-          <h3 class="post-subtitle">{{ post.subtitle }}</h3>
-        {% endif %}
-        <p class="excerpt">
-          {% if post.lang == 'en' %}
-            {{ post.content | strip_html | truncate: 300 }}
-          {% else %}
-            {{ post.content | strip_html | truncate: 200 }}
+      <!-- 作者 special-card（顶部留白缩小、带头像） -->
+      <article class="card post-card special-card" id="author-card">
+        <div class="sc-head">
+          <img class="avatar" src="{{ site.baseurl }}/img/avatar.jpg" alt="avatar">
+          <div>
+            <h2 class="sc-title">心哲空间</h2>
+            <div class="sc-sub">
+              严肃写作与系统建构：结构生成论—原初意义论—天平论—元行为心理学
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-links">
+          {% if site.github_username %}
+            <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a>
+            <span class="dot">·</span>
           {% endif %}
-        </p>
-      </a>
-      <div class="post-meta">
-        <span>{{ post.date | date: "%Y-%m-%d" }}</span>
-        {% if post.tags and post.tags.size > 0 %}
-          <span class="dot">•</span>
-          <span class="tags">
-            {% for t in post.tags limit:3 %}
-              <span class="tag">{{ t }}</span>
-            {% endfor %}
-          </span>
-        {% endif %}
-      </div>
-    </article>
-    {% endfor %}
-  </div>
 
-  <!-- 翻页 -->
-  {% if paginator.total_pages > 1 %}
-  <ul class="pager pager-clean">
-    {% if paginator.previous_page %}
-    <li class="previous">
-      <a class="btn btn-pager" href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
-    </li>
+          {% if site.twitter_username %}
+            <a href="https://twitter.com/{{ site.twitter_username | replace:'@','' }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username | replace:'@','' }}</a>
+            <span class="dot">·</span>
+          {% endif %}
+
+          {% if site.zhihu_username %}
+            <a href="https://www.zhihu.com/people/{{ site.zhihu_username | uri_escape }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_display | default: site.zhihu_username }}</a>
+            <span class="dot">·</span>
+          {% endif %}
+
+          <span class="sns-mute">公众号 · 心哲空间</span>
+        </div>
+      </article>
+
+      <!-- 文章卡片 -->
+      {% for post in paginator.posts %}
+      <article class="card post-card">
+        <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">
+          <h2 class="post-title">{{ post.title }}</h2>
+          {% if post.subtitle %}
+            <h3 class="post-subtitle">{{ post.subtitle }}</h3>
+          {% endif %}
+          <p class="excerpt">
+            {% if post.lang == 'en' %}
+              {{ post.content | strip_html | truncate: 300 }}
+            {% else %}
+              {{ post.content | strip_html | truncate: 200 }}
+            {% endif %}
+          </p>
+        </a>
+        <div class="post-meta">
+          <span>{{ post.date | date: "%Y-%m-%d" }}</span>
+          {% if post.tags and post.tags.size > 0 %}
+            <span class="dot">•</span>
+            <span class="tags">
+              {% for t in post.tags limit:3 %}
+                <span class="tag">{{ t }}</span>
+              {% endfor %}
+            </span>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+
+    </div><!-- /.masonry -->
+
+    <!-- 翻页 -->
+    {% if paginator.total_pages > 1 %}
+    <ul class="pager pager-clean">
+      {% if paginator.previous_page %}
+      <li class="previous">
+        <a class="btn btn-pager" href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
+      </li>
+      {% endif %}
+      {% if paginator.next_page %}
+      <li class="next">
+        <a class="btn btn-pager" href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
+      </li>
+      {% endif %}
+    </ul>
     {% endif %}
-    {% if paginator.next_page %}
-    <li class="next">
-      <a class="btn btn-pager" href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
-    </li>
-    {% endif %}
-  </ul>
-  {% endif %}
+
+  </div>
 </div>
 
-<!-- 最右：书签式文章轨道（只保留这一条） -->
-<div id="bookmark-rail" class="bookmark-rail">
+<!-- 右侧：书签式目录条（确保页面仅此一处） -->
+<aside id="bookmark-rail" class="bookmark-rail">
   <ul class="bm-ul">
-    {% assign _sorted = site.posts | sort: 'date' | reverse %}
-    {% for p in _sorted %}
+    {% assign recent = site.posts | sort:'date' | reverse %}
+    {% for p in recent limit:40 %}
       <li class="bm-item">
         <a class="bm-link" href="{{ p.url | prepend: site.baseurl }}">
-          <span class="bm-panel">
+          <div class="bm-tab">{{ p.title | truncate: 8 }}</div>
+          <div class="bm-panel">
             <span class="bm-title">{{ p.title }}</span>
             <span class="bm-date">{{ p.date | date: "%m-%d" }}</span>
-          </span>
-          <span class="bm-tab">{{ p.title }}</span>
+          </div>
         </a>
       </li>
     {% endfor %}
   </ul>
-</div>
+</aside>
 
 <script>
-/* —— 防止“卡片条”重复：无论哪个文件又渲染了，统统只留一个 —— */
-(function(){
-  var railsById = document.querySelectorAll('#bookmark-rail');
-  if (railsById.length > 1) for (var i = 1; i < railsById.length; i++) railsById[i].remove();
-  var railsByClass = document.querySelectorAll('.bookmark-rail');
-  if (railsByClass.length > 1) for (var i = 1; i < railsByClass.length; i++) railsByClass[i].remove();
-})();
+/* —— 彻底移除旧“最新文章卡片”，防止重影 —— */
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.directory-card, .latest-posts-card').forEach(function(n){ n.remove(); });
+});
 
-/* —— 书签轨道滚动（露出约 1/3，文章≤5时自动无“半隐”） —— */
-(function(){
-  var rail = document.getElementById('bookmark-rail'); if(!rail) return;
-  var ul = rail.querySelector('.bm-ul'), items = ul.querySelectorAll('.bm-item');
-  var H = 56, visible = 7, idx = 0;
-  if(items.length <= 5){ rail.style.height='auto'; rail.style.paddingTop='0'; rail.style.paddingBottom='0'; rail.style.overflow='visible'; }
-  function maxIdx(){ return Math.max(0, items.length - visible); }
-  function update(){ ul.style.transform = 'translateY(' + (-idx * H) + 'px)'; }
-  function scrollBy(d){ var m=maxIdx(); if(m===0) return; idx=Math.min(m, Math.max(0, idx+d)); update(); }
-  update();
-  rail.addEventListener('wheel', function(e){ if(maxIdx()===0) return; e.preventDefault(); scrollBy((e.deltaY>0)?1:-1); }, {passive:false});
-  window.addEventListener('keydown', function(e){ if(maxIdx()===0) return; if(e.key==='ArrowDown') scrollBy(1); if(e.key==='ArrowUp') scrollBy(-1); });
-})();
-
-/* —— Masonry列识别 + 悬停交互：本列上移，邻列下移 —— */
-(function(){
-  var grid = document.getElementById('masonry'); if(!grid) return;
-  function markColumns(){
-    var items = Array.from(grid.querySelectorAll('.m-item'));
-    if (items.length === 0) return;
-    // 以offsetLeft分组得到列
-    var xs = Array.from(new Set(items.map(function(it){ return it.offsetLeft; }))).sort(function(a,b){return a-b;});
-    items.forEach(function(it){ it.dataset.col = xs.indexOf(it.offsetLeft); });
-    grid.dataset.cols = xs.length;
-  }
-  var recalc = function(){ markColumns(); };
-  window.addEventListener('load', recalc);
-  window.addEventListener('resize', function(){ setTimeout(recalc, 200); });
-  markColumns();
-
-  var SHIFT = 8; // px
-  function reset(){ grid.querySelectorAll('.m-item').forEach(function(it){ it.style.transform=''; }); }
-  grid.addEventListener('mouseover', function(e){
-    var card = e.target.closest('.m-item'); if(!card) return;
-    var col = parseInt(card.dataset.col || -1), cols = parseInt(grid.dataset.cols || 0);
-    if(col < 0) return;
-    reset();
-    grid.querySelectorAll('.m-item').forEach(function(it){
-      var c = parseInt(it.dataset.col || -1);
-      if(c === col){ it.style.transform = 'translateY(-'+SHIFT+'px)'; }
-      else if(c === col-1 || c === col+1){ it.style.transform = 'translateY('+SHIFT+'px)'; }
-    });
-  }, true);
-  grid.addEventListener('mouseleave', reset);
-})();
-</script>
-
-<script>
-/* —— 防止书签条重复 —— */
+/* —— 防止书签条重复（如果主题某处再次插入，同 id 的后续全部删掉） —— */
 (function(){
   var rails = document.querySelectorAll('#bookmark-rail');
   if (rails.length > 1) for (var i = 1; i < rails.length; i++) rails[i].remove();
 })();
 
-/* —— 书签式轨道滚动（与之前一致） —— */
+/* —— 书签轨道滚动 —— */
 (function(){
   var rail = document.getElementById('bookmark-rail'); if(!rail) return;
   var ul = rail.querySelector('.bm-ul'), items = ul.querySelectorAll('.bm-item');
@@ -163,57 +135,5 @@ description: "「离开世界之前 一切都是过程」"
   rail.addEventListener('wheel', function(e){ if(maxIdx()===0) return; e.preventDefault(); scrollBy((e.deltaY>0)?1:-1); }, {passive:false});
   window.addEventListener('keydown', function(e){ if(maxIdx()===0) return; if(e.key==='ArrowDown') scrollBy(1); if(e.key==='ArrowUp') scrollBy(-1); });
 })();
-
-/* —— 卡片：悬停一次晃动 + 点击脉冲 + 声音反馈 —— */
-(function(){
-  var cards = document.querySelectorAll('.masonry .card');
-  if(!cards.length) return;
-
-  /* WebAudio 简易音效：在首个用户交互后解锁 */
-  var ctx, unlocked = false;
-  function unlockAudio(){ if(unlocked) return; unlocked = true; try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
-  window.addEventListener('pointerdown', unlockAudio, {once:true});
-
-  function beep(type){
-    if(!ctx) return;
-    var o = ctx.createOscillator();
-    var g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    // hover: 清亮，click: 稍低沉
-    if(type==='hover'){ o.frequency.value = 880; } else { o.frequency.value = 520; }
-    o.type = 'triangle';
-    var now = ctx.currentTime;
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
-    o.start(now); o.stop(now + 0.12);
-  }
-
-  cards.forEach(function(card){
-    // 悬停：仅第一次“轻微晃动”
-    var wobbled = false;
-    card.addEventListener('mouseenter', function(){
-      if(!wobbled){
-        card.classList.add('wobble-once');
-        // 动画结束后去掉类并标记已晃动
-        card.addEventListener('animationend', function endOnce(){
-          card.classList.remove('wobble-once');
-          card.removeEventListener('animationend', endOnce);
-        });
-        wobbled = true;
-        beep('hover');
-      }
-    });
-
-    // 点击：轻微脉冲 + 声音
-    card.addEventListener('click', function(){
-      card.classList.add('pulse-once');
-      card.addEventListener('animationend', function endPulse(){
-        card.classList.remove('pulse-once');
-        card.removeEventListener('animationend', endPulse);
-      });
-      beep('click');
-    });
-  });
-})();
 </script>
+
