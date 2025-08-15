@@ -3,44 +3,53 @@ layout: page
 description: "「离开世界之前 一切都是过程」"
 ---
 
-{% for post in paginator.posts %}
+{%- comment -%}
+优先使用 paginator.posts；若未启用分页，回退到 site.posts
+{%- endcomment -%}
+{% assign posts_coll = paginator.posts | default: site.posts %}
+
+{% for post in posts_coll %}
 <div class="post-preview">
-    <a href="{{ post.url | prepend: site.baseurl }}">
-        <h2 class="post-title">
-            {{ post.title }}
-        </h2>
-        {% if post.subtitle %}
-        <h3 class="post-subtitle">
-            {{ post.subtitle }}
-        </h3>
-        {% endif %}
-        <div class="post-content-preview">
-            {% if post.lang == 'en' %}
-                {{ post.content | strip_html | truncate:300 }}
-            {% else %}
-                {{ post.content | strip_html | truncate:200 }}
-            {% endif %}
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by {% if post.author %}{{ post.author }}{% else %}{{ site.title }}{% endif %} on {{ post.date | date: "%B %-d, %Y" }}
-    </p>
+  <a href="{{ post.url | prepend: site.baseurl }}">
+    <h2 class="post-title">{{ post.title }}</h2>
+    {% if post.subtitle %}
+      <h3 class="post-subtitle">{{ post.subtitle }}</h3>
+    {% endif %}
+    <div class="post-content-preview">
+      {%- if post.lang == 'en' -%}
+        {{ post.content | strip_html | truncate: 320 }}
+      {%- else -%}
+        {{ post.content | strip_html | truncate: 220 }}
+      {%- endif -%}
+    </div>
+  </a>
+  <p class="post-meta">
+    发布于 {{ post.date | date: "%Y-%m-%d" }}
+    {% if post.author %} · 作者：{{ post.author }}{% endif %}
+  </p>
 </div>
 <hr>
 {% endfor %}
 
-<!-- Pager -->
-{% if paginator.total_pages > 1 %}
+{%- comment -%}
+分页导航（仅在启用 jekyll-paginate 时出现）
+{%- endcomment -%}
+{% if paginator and paginator.total_pages > 1 %}
 <ul class="pager">
-    {% if paginator.previous_page %}
+  {% if paginator.previous_page %}
     <li class="previous">
-        <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; Newer Posts</a>
+      <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">← 上一页</a>
     </li>
-    {% endif %}
-    {% if paginator.next_page %}
+  {% endif %}
+  {% if paginator.next_page %}
     <li class="next">
-        <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">Older Posts &rarr;</a>
+      <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 →</a>
     </li>
-    {% endif %}
+  {% endif %}
 </ul>
 {% endif %}
+
+{%- comment -%}
+如需“阅读全文”样式按钮，可在 post 模板里或这里追加：
+<a class="btn btn-default" href="{{ post.url | prepend: site.baseurl }}">阅读全文</a>
+{%- endcomment -%}
