@@ -1,5 +1,10 @@
 {% comment %}
-    @param {Boolean} center 
+  @param {Boolean} center  —— 传 center=true 时居中
+  兼容原主题 fa-stack 圆形底图标的样式；仅在 _config.yml 中字段存在时渲染
+  新增：
+    - bilibili_id（哔哩哔哩空间）
+    - wechat_official_account / wechat_qr（公众号名 / 站内二维码图）
+    - custom_links（自由扩展外链数组）
 {% endcomment %}
 
 {% if include.center %}
@@ -8,74 +13,129 @@
 <ul class="list-inline">
 {% endif %}
 
-  {% if site.RSS %}
+  {%- if site.RSS -%}
   <li>
-    <a href="{{ "/feed.xml" | prepend: site.baseurl }}">
-      <span class="fa-stack fa-lg">
+    <a href="{{ "/feed.xml" | prepend: site.baseurl }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="RSS">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
       </span>
     </a>
   </li>
-  {% endif %}
-  {% if site.twitter_username %}
+  {%- endif -%}
+
+  {%- if site.twitter_username and site.twitter_username != "" -%}
   <li>
-    <a href="https://twitter.com/{{ site.twitter_username }}">
-      <span class="fa-stack fa-lg">
+    <a href="https://twitter.com/{{ site.twitter_username }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="Twitter">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
       </span>
     </a>
   </li>
-  {% endif %}
-  {% if site.zhihu_username %}
+  {%- endif -%}
+
+  {%- if site.zhihu_username and site.zhihu_username != "" -%}
   <li>
-    <a target="_blank" href="https://www.zhihu.com/people/{{ site.zhihu_username }}">
-      <span class="fa-stack fa-lg">
+    <a href="https://www.zhihu.com/people/{{ site.zhihu_username }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="知乎">
         <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa  fa-stack-1x fa-inverse">知</i>
+        <i class="fa fa-stack-1x fa-inverse">知</i>
       </span>
     </a>
   </li>
-  {% endif %}
-  {% if site.weibo_username %}
+  {%- endif -%}
+
+  {%- if site.weibo_username and site.weibo_username != "" -%}
   <li>
-    <a target="_blank" href="http://weibo.com/{{ site.weibo_username }}">
-      <span class="fa-stack fa-lg">
+    <a href="https://weibo.com/{{ site.weibo_username }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="微博">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
       </span>
     </a>
   </li>
-  {% endif %}
-  {% if site.facebook_username %}
+  {%- endif -%}
+
+  {%- if site.facebook_username and site.facebook_username != "" -%}
   <li>
-    <a target="_blank" href="https://www.facebook.com/{{ site.facebook_username }}">
-      <span class="fa-stack fa-lg">
+    <a href="https://www.facebook.com/{{ site.facebook_username }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="Facebook">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
       </span>
     </a>
   </li>
-  {% endif %}
-  {% if site.github_username %}
+  {%- endif -%}
+
+  {%- if site.github_username and site.github_username != "" -%}
   <li>
-    <a target="_blank" href="https://github.com/{{ site.github_username }}">
-      <span class="fa-stack fa-lg">
+    <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="GitHub">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-github fa-stack-1x fa-inverse"></i>
       </span>
     </a>
   </li>
-  {% endif %}
-  {% if site.linkedin_username %}
+  {%- endif -%}
+
+  {%- if site.linkedin_username and site.linkedin_username != "" -%}
   <li>
-    <a target="_blank" href="https://www.linkedin.com/in/{{ site.linkedin_username }}">
-      <span class="fa-stack fa-lg">
+    <a href="https://www.linkedin.com/in/{{ site.linkedin_username }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="LinkedIn">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
       </span>
     </a>
   </li>
-  {% endif %}
+  {%- endif -%}
+
+  {%- if site.bilibili_id and site.bilibili_id != "" -%}
+  <li>
+    <a href="https://space.bilibili.com/{{ site.bilibili_id }}" target="_blank" rel="noopener">
+      <span class="fa-stack fa-lg" title="哔哩哔哩">
+        <i class="fa fa-circle fa-stack-2x"></i>
+        <i class="fa fa-video-camera fa-stack-1x fa-inverse"></i>
+      </span>
+    </a>
+  </li>
+  {%- endif -%}
+
+  {%- comment -%} 公众号：优先使用 wechat_qr 打开站内二维码图 {%- endcomment -%}
+  {%- if site.wechat_official_account or site.wechat_qr -%}
+  <li>
+    {%- if site.wechat_qr and site.wechat_qr != "" -%}
+      <a href="{{ site.wechat_qr | prepend: site.baseurl }}" target="_blank" rel="noopener">
+        <span class="fa-stack fa-lg" title="{{ site.wechat_official_account | default: '微信公众号' }}">
+          <i class="fa fa-circle fa-stack-2x"></i>
+          <i class="fa fa-weixin fa-stack-1x fa-inverse"></i>
+        </span>
+      </a>
+    {%- else -%}
+      <span title="{{ site.wechat_official_account | default: '微信公众号' }}">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-circle fa-stack-2x"></i>
+          <i class="fa fa-weixin fa-stack-1x fa-inverse"></i>
+        </span>
+      </span>
+    {%- endif -%}
+  </li>
+  {%- endif -%}
+
+  {%- comment -%} 可选：自由扩展外链；icon 使用 Font Awesome 类名 {%- endcomment -%}
+  {%- if site.custom_links and site.custom_links.size > 0 -%}
+    {%- for link in site.custom_links -%}
+      {%- if link.url and link.title -%}
+      <li>
+        <a href="{{ link.url }}" target="_blank" rel="noopener">
+          <span class="fa-stack fa-lg" title="{{ link.title }}">
+            <i class="fa fa-circle fa-stack-2x"></i>
+            <i class="fa {{ link.icon | default: 'fa-external-link' }} fa-stack-1x fa-inverse"></i>
+          </span>
+        </a>
+      </li>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
 </ul>
