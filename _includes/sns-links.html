@@ -1,93 +1,28 @@
 {% comment %}
-  用法：{% include sns-links.html center=true %}
-  需要在 _config.yml 里配置各平台的 “username/ID”，不要写完整 URL。
-  另外可选配置 *display_name*，用于页面展示的昵称。
+  竖排社交链接（侧栏用）
+  依赖 _config.yml 中的：
+  zhihu_name, zhihu_url, github_username, twitter_username, bilibili_name, bilibili_url, wechat_name
 {% endcomment %}
 
-{% assign center = include.center | default: false %}
-{% if center %}<ul class="sns-links list-inline text-center sns-links-rich">
-{% else %}<ul class="sns-links list-inline sns-links-rich">{% endif %}
+<ul class="sns-vert">
+  {% if site.zhihu_url %}
+  <li><a href="{{ site.zhihu_url }}" target="_blank" rel="noopener">知乎 · {{ site.zhihu_name }}</a></li>
+  {% endif %}
 
-  {%- assign has_any = false -%}
+  {% if site.github_username %}
+  <li><a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">GitHub · {{ site.github_username }}</a></li>
+  {% endif %}
 
-  {%- if site.zhihu_username -%}{%- assign has_any = true -%}
-  <li>
-    <a target="_blank" href="https://www.zhihu.com/people/{{ site.zhihu_username }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-stack-1x fa-inverse">知</i>
-      </span>
-      <span class="sns-text">知乎 · {{ site.zhihu_display_name | default: site.zhihu_username }}</span>
-    </a>
-  </li>
-  {%- endif -%}
+  {% if site.twitter_username %}
+  <li><a href="https://twitter.com/{{ site.twitter_username }}" target="_blank" rel="noopener">Twitter · {{ site.twitter_username }}</a></li>
+  {% endif %}
 
-  {%- if site.github_username -%}{%- assign has_any = true -%}
-  <li>
-    <a target="_blank" href="https://github.com/{{ site.github_username }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-github fa-stack-1x fa-inverse"></i>
-      </span>
-      <span class="sns-text">GitHub · {{ site.github_display_name | default: site.github_username }}</span>
-    </a>
-  </li>
-  {%- endif -%}
+  {% if site.bilibili_url %}
+  <li><a href="{{ site.bilibili_url }}" target="_blank" rel="noopener">Bilibili · {{ site.bilibili_name }}</a></li>
+  {% endif %}
 
-  {%- if site.twitter_username -%}{%- assign has_any = true -%}
-  <li>
-    <a target="_blank" href="https://twitter.com/{{ site.twitter_username }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
-      </span>
-      <span class="sns-text">Twitter · {{ site.twitter_display_name | default: site.twitter_username }}</span>
-    </a>
-  </li>
-  {%- endif -%}
-
-  {%- if site.bilibili_uid -%}{%- assign has_any = true -%}
-  <li>
-    <a target="_blank" href="https://space.bilibili.com/{{ site.bilibili_uid }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-play fa-stack-1x fa-inverse"></i>
-      </span>
-      <span class="sns-text">Bilibili · {{ site.bilibili_display_name | default: site.bilibili_uid }}</span>
-    </a>
-  </li>
-  {%- endif -%}
-
-  {%- if site.wechat_official -%}{%- assign has_any = true -%}
-  <li class="wechat">
-    <a href="javascript:void(0)" onclick="var w=document.getElementById('wechat-qr'); if(w){w.classList.toggle('show');}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-wechat fa-stack-1x fa-inverse"></i>
-      </span>
-      <span class="sns-text">公众号 · {{ site.wechat_official }}</span>
-    </a>
-    {% if site.wechat_qr %}
-    <div id="wechat-qr" class="wechat-qr">
-      <img src="{{ site.wechat_qr | prepend: site.baseurl }}" alt="WeChat QR">
-    </div>
-    {% endif %}
-  </li>
-  {%- endif -%}
-
-  {%- if site.RSS -%}{%- assign has_any = true -%}
-  <li>
-    <a href="{{ "/feed.xml" | prepend: site.baseurl }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
-      </span>
-      <span class="sns-text">RSS</span>
-    </a>
-  </li>
-  {%- endif -%}
-
-  {%- if has_any == false -%}
-    <li><span class="sns-text" style="opacity:.7">（未配置社交链接）</span></li>
-  {%- endif -%}
+  {% if site.wechat_name %}
+  <li><span class="sns-mute">公众号 · {{ site.wechat_name }}</span></li>
+  {% endif %}
 </ul>
+
