@@ -1,34 +1,71 @@
+/* ===== 意义姿态测试（仅作用于 .mt-app 命名空间） ===== */
+
+.mt-toolbar{ margin:16px 0 8px; }
+.mt-btn{
+  display:inline-block; padding:8px 14px; border-radius:12px;
+  border:1px solid rgba(0,0,0,.08); background:#fff; color:#1f2937; text-decoration:none;
+  transition:all .2s ease;
+}
+.mt-btn:hover{ background:rgba(47,111,128,.06); border-color:rgba(47,111,128,.25); }
+.mt-btn-back{}
+
+/* 包裹层：宽度对齐全站内容区 */
+.mt-wrap{ max-width:960px; margin:0 auto; padding:16px; }
+
+/* 主题色（使用你站点的绿，保证风格统一） */
 :root{
-  --fg:#1a1a1a;
-  --bg:#ffffff;
-  --muted:#666;
-  --brand:#718771;        /* 用户指定 */
-  --accent:#FFD9A3;       /* 用户指定 */
-  --radius:16px;
+  --mt-fg:#1a1a1a;
+  --mt-muted:#666;
+  --mt-brand:#718771;
+  --mt-accent:#FFD9A3;
+  --mt-radius:16px;
 }
-*{box-sizing:border-box}
-body{
-  margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC","Hiragino Sans GB","Microsoft YaHei", sans-serif;
-  color:var(--fg); background:var(--bg);
+
+/* 命名空间下再设置基础 */
+.mt-app *{ box-sizing:border-box; }
+.mt-app{ color:var(--mt-fg); }
+
+/* 页头/副标题 */
+.mt-app .mt-header{ padding-top:4px; padding-bottom:8px; }
+.mt-app h1{ margin:0 0 8px; font-size:28px; }
+.mt-app .subtitle{ margin:0; color:var(--mt-muted); }
+
+/* 卡片（沿用你站点卡片风的感觉，但独立定义，防止互相影响） */
+.mt-app .card{
+  background:#fff; border:1px solid rgba(0,0,0,.06);
+  border-radius:var(--mt-radius); padding:16px; margin:16px 0;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
 }
-.container{max-width:960px; margin:0 auto; padding:16px}
-header{padding-top:24px; padding-bottom:8px}
-h1{margin:0 0 8px 0; font-size:28px}
-.subtitle{margin:0; color:var(--muted)}
-.card{
-  background:#fff; border:1px solid #eee; border-radius:var(--radius); padding:16px; margin:16px 0;
-  box-shadow:0 4px 16px rgba(0,0,0,0.04);
+.mt-app .hidden{ display:none; }
+
+/* 按钮（仅限测试页内） */
+.mt-app .btn{
+  border:1px solid var(--mt-brand); color:var(--mt-brand);
+  background:#fff; padding:8px 16px; border-radius:999px; cursor:pointer;
+  transition: all .15s ease;
 }
-.hidden{display:none}
-.btn{border:1px solid var(--brand); color:var(--brand); background:#fff; padding:8px 16px; border-radius:999px; cursor:pointer}
-.btn.primary{background:var(--brand); color:#fff; border-color:var(--brand)}
-.btn:hover{opacity:.9}
-.mbti-row{margin:8px 0}
-.grid-4{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
-.item{padding:12px; border-bottom:1px dashed #eee}
-.item h3{margin:0 0 8px; font-size:16px}
-.scale{display:flex; justify-content:space-between; align-items:center; gap:8px}
-.scale label{font-size:12px; color:var(--muted)}
-.scale input{accent-color:var(--brand)}
-.actions{margin-top:16px; display:flex; gap:12px}
-.badge{display:inline-block; padding:2px 8px; border-radius:8px; font-size:12px; background:var(--accent); color:#333}
+.mt-app .btn.primary{ background:var(--mt-brand); color:#fff; border-color:var(--mt-brand); }
+.mt-app .btn:hover{ opacity:.95; }
+.mt-app .actions{ margin-top:16px; display:flex; gap:12px; }
+
+/* 表单与条目 */
+.mt-app .mbti-row{ margin:8px 0; }
+.mt-app .grid-4{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+
+.mt-app .item{ padding:12px; border-bottom:1px dashed #eee; }
+.mt-app .item h3{ margin:0 0 8px; font-size:16px; }
+
+.mt-app .scale{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.mt-app .scale label{ font-size:12px; color:var(--mt-muted); }
+.mt-app .scale input{ accent-color:var(--mt-brand); }
+
+.mt-app .badge{ display:inline-block; padding:2px 8px; border-radius:8px; font-size:12px; background:var(--mt-accent); color:#333; }
+
+/* 页脚 */
+.mt-app .mt-footer{ color:#6b7280; font-size:14px; }
+
+/* 小屏微调 */
+@media (max-width: 768px){
+  .mt-app h1{ font-size:24px; }
+  .mt-app .grid-4{ grid-template-columns: 1fr; }
+}
