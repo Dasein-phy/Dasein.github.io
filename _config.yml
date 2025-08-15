@@ -16,17 +16,26 @@ baseurl: "/Dasein.github.io"
 
 # 未来日期的文章是否发布
 future: true
-
 # ─────────────────────────────────────────────────────────
-# 社交帐号（留空表示不展示）
+# 社交帐号
 # ─────────────────────────────────────────────────────────
 RSS: false
 weibo_username:
-zhihu_username: <a href="https://www.zhihu.com/people/qian-fan-guo-jin-89-69" target="_blank">冬酱</a>
+zhihu_username: 冬酱
 github_username: dasein-phy
-twitter_username: @FAamadeus
-# facebook_username:
-# linkedin_username:
+twitter_username: FAamadeus
+facebook_username:
+linkedin_username:
+
+# 其他平台
+bilibili_id: UID:62861274              # 如：12345678
+wechat_official_account: 心哲空间
+wechat_qr: /img/wechat_qr.jpg
+
+# 自定义外链（可选）
+custom_links:
+  # - { title: "Substack", url: "https://xxx.substack.com", icon: "fa-newspaper-o" }
+  # - { title: "豆瓣", url: "https://www.douban.com/people/xxxx", icon: "fa-leaf" }
 
 # ─────────────────────────────────────────────────────────
 # 构建设置 / Build
