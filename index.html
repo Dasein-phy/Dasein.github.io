@@ -142,3 +142,78 @@ description: "「离开世界之前 一切都是过程」"
   grid.addEventListener('mouseleave', reset);
 })();
 </script>
+
+<script>
+/* —— 防止书签条重复 —— */
+(function(){
+  var rails = document.querySelectorAll('#bookmark-rail');
+  if (rails.length > 1) for (var i = 1; i < rails.length; i++) rails[i].remove();
+})();
+
+/* —— 书签式轨道滚动（与之前一致） —— */
+(function(){
+  var rail = document.getElementById('bookmark-rail'); if(!rail) return;
+  var ul = rail.querySelector('.bm-ul'), items = ul.querySelectorAll('.bm-item');
+  var H = 56, visible = 7, idx = 0;
+  if(items.length <= 5){ rail.style.height='auto'; rail.style.paddingTop='0'; rail.style.paddingBottom='0'; rail.style.overflow='visible'; }
+  function maxIdx(){ return Math.max(0, items.length - visible); }
+  function update(){ ul.style.transform = 'translateY(' + (-idx * H) + 'px)'; }
+  function scrollBy(d){ var m=maxIdx(); if(m===0) return; idx=Math.min(m, Math.max(0, idx+d)); update(); }
+  update();
+  rail.addEventListener('wheel', function(e){ if(maxIdx()===0) return; e.preventDefault(); scrollBy((e.deltaY>0)?1:-1); }, {passive:false});
+  window.addEventListener('keydown', function(e){ if(maxIdx()===0) return; if(e.key==='ArrowDown') scrollBy(1); if(e.key==='ArrowUp') scrollBy(-1); });
+})();
+
+/* —— 卡片：悬停一次晃动 + 点击脉冲 + 声音反馈 —— */
+(function(){
+  var cards = document.querySelectorAll('.masonry .card');
+  if(!cards.length) return;
+
+  /* WebAudio 简易音效：在首个用户交互后解锁 */
+  var ctx, unlocked = false;
+  function unlockAudio(){ if(unlocked) return; unlocked = true; try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  window.addEventListener('pointerdown', unlockAudio, {once:true});
+
+  function beep(type){
+    if(!ctx) return;
+    var o = ctx.createOscillator();
+    var g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    // hover: 清亮，click: 稍低沉
+    if(type==='hover'){ o.frequency.value = 880; } else { o.frequency.value = 520; }
+    o.type = 'triangle';
+    var now = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+    o.start(now); o.stop(now + 0.12);
+  }
+
+  cards.forEach(function(card){
+    // 悬停：仅第一次“轻微晃动”
+    var wobbled = false;
+    card.addEventListener('mouseenter', function(){
+      if(!wobbled){
+        card.classList.add('wobble-once');
+        // 动画结束后去掉类并标记已晃动
+        card.addEventListener('animationend', function endOnce(){
+          card.classList.remove('wobble-once');
+          card.removeEventListener('animationend', endOnce);
+        });
+        wobbled = true;
+        beep('hover');
+      }
+    });
+
+    // 点击：轻微脉冲 + 声音
+    card.addEventListener('click', function(){
+      card.classList.add('pulse-once');
+      card.addEventListener('animationend', function endPulse(){
+        card.classList.remove('pulse-once');
+        card.removeEventListener('animationend', endPulse);
+      });
+      beep('click');
+    });
+  });
+})();
+</script>
