@@ -4,7 +4,7 @@ description: "「离开世界之前 一切都是过程」"
 ---
 
 <div class="dz-layout post-list">
-  <!-- 左列：文章卡片流 -->
+  <!-- 左列：文章卡片流（只放文章和翻页） -->
   <div class="post-col">
     {% for post in paginator.posts %}
     <article class="card post-card">
@@ -51,7 +51,7 @@ description: "「离开世界之前 一切都是过程」"
     {% endif %}
   </div>
 
-  <!-- 右列：人物侧栏 + 目录卡（宽版） -->
+  <!-- 右列：人物侧栏 + 宽版目录，只在这里放一次 -->
   <aside class="sidebar-col">
     <section class="card author-card">
       <div class="author-head">
@@ -110,11 +110,8 @@ description: "「离开世界之前 一切都是过程」"
   var ul = rail.querySelector('.bm-ul');
   var items = ul.querySelectorAll('.bm-item');
 
-  var H = 56;          // 单卡总高（css 里 bm-item 52px + margin 2+2）
-  var visible = 7;     // 一屏显示数量（上下“半隐”由容器裁剪实现）
-  var idx = 0, lock = false;
+  var H = 56, visible = 7, idx = 0, lock = false;
 
-  // 少量文章（≤5）：关闭半隐与滚动，完整展示
   if(items.length <= 5){
     rail.style.height = 'auto';
     rail.style.paddingTop = '0';
@@ -122,10 +119,7 @@ description: "「离开世界之前 一切都是过程」"
     rail.style.overflow = 'visible';
   }
 
-  function maxIdx(){
-    if(items.length <= visible) return 0;
-    return Math.max(0, items.length - visible);
-  }
+  function maxIdx(){ return (items.length <= visible) ? 0 : Math.max(0, items.length - visible); }
   function update(){ ul.style.transform = 'translateY(' + (-idx * H) + 'px)'; }
   update();
 
@@ -137,8 +131,7 @@ description: "「离开世界之前 一切都是过程」"
   }
 
   rail.addEventListener('wheel', function(e){
-    var m = maxIdx();
-    if(m === 0) return; // 让页面正常滚动
+    if(maxIdx() === 0) return;
     e.preventDefault();
     if(lock) return;
     lock = true;
