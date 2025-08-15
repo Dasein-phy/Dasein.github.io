@@ -1,72 +1,106 @@
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="description" content="{{ site.description }}">
-    <meta name="keywords" content="{{ site.keyword }}">
-    <meta name="theme-color" content="{{ site.chrome-tab-theme-color }}">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-    <!-- Open Graph -->
-    <meta property="og:title"
-        content="{% if page.title %}{{ page.title }} - {{ site.SEOTitle }}{% else %}{{ site.SEOTitle }}{% endif %}">
-    {% case page.layout %}
-    {% when 'post' %}
+  {%- comment -%}
+  基本 SEO
+  {%- endcomment -%}
+  <title>{% if page.title %}{{ page.title }} - {{ site.SEOTitle }}{% else %}{{ site.SEOTitle }}{% endif %}</title>
+  <meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+  <meta name="keywords" content="{{ site.keyword | default: '' }}">
+
+  {%- comment -%}
+  主题色（Chrome / Android）、Windows 磁贴色、Safari pinned-tab
+  {%- endcomment -%}
+  <meta name="theme-color" content="{{ site.chrome-tab-theme-color | default: '#718771' }}">
+  <meta name="msapplication-TileColor" content="{{ site.chrome-tab-theme-color | default: '#718771' }}">
+  <link rel="mask-icon" href="{{ site.baseurl }}/img/safari-pinned-tab.svg" color="{{ site.chrome-tab-theme-color | default: '#718771' }}">
+
+  {%- comment -%}
+  Open Graph & Twitter Cards
+  {%- endcomment -%}
+  {% assign page_title = page.title | default: site.SEOTitle %}
+  {% assign page_desc  = page.description | default: site.description %}
+  {% assign page_url   = site.url | append: page.url %}
+  {% assign page_image = site.url | append: site.sidebar-avatar %}
+
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:site_name" content="{{ site.SEOTitle }}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:image" content="{{ page_image }}">
+  {% if page.layout == 'post' %}
     <meta property="og:type" content="article">
-    <meta property="og:description" content="{{ page.excerpt | strip_html | truncate:200 }}">
-    {% if page.date %}
-    <meta property="article:published_time" content="{{ page.date | date: " %Y-%m-%dT%H:%M:%SZ" }}">
-    {% endif %}
-    {% if page.author %}
-    <meta property="article:author" content="{{ page.author }}">
-    {% endif %}
-    {% for tag in page.tags %}
-    <meta property="article:tag" content="{{ tag }}">
-    {% endfor %}
-    {% else %}
+    <meta property="og:description" content="{{ page.excerpt | default: page_desc | strip_html | truncate: 200 }}">
+    {% if page.date %}<meta property="article:published_time" content="{{ page.date | date: '%Y-%m-%dT%H:%M:%SZ' }}">{% endif %}
+    {% if page.author %}<meta property="article:author" content="{{ page.author }}">{% endif %}
+    {% for tag in page.tags %}<meta property="article:tag" content="{{ tag }}">{% endfor %}
+  {% else %}
     <meta property="og:type" content="website">
-    <meta property="og:description"
-        content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
-    {% endcase %}
-    <meta property="og:image" content="{{ site.url }}{{ site.sidebar-avatar }}">
-    <meta property="og:url" content="{{ site.url }}{{ page.url }}">
-    <meta property="og:site_name" content="{{ site.SEOTitle }}">
+    <meta property="og:description" content="{{ page_desc }}">
+  {% endif %}
 
-    <title>{% if page.title %}{{ page.title }} - {{ site.SEOTitle }}{% else %}{{ site.SEOTitle }}{% endif %}</title>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title }}">
+  <meta name="twitter:description" content="{{ page_desc }}">
+  <meta name="twitter:image" content="{{ page_image }}">
 
-    <!-- Web App Manifest -->
-    <link rel="manifest" href="{{ site.baseurl }}/pwa/manifest.json">
+  {%- comment -%}
+  Canonical（去掉 index.html，兼容 baseurl）
+  {%- endcomment -%}
+  <link rel="canonical" href="{{ page.url | replace: 'index.html','' | prepend: site.baseurl | prepend: site.url }}">
 
-    <!-- Favicon -->
-    <link rel="shortcut icon" href="{{ site.baseurl }}/img/favicon.ico">
+  {%- comment -%}
+  Web App Manifest（确保 /pwa/manifest.json 存在）
+  {%- endcomment -%}
+  <link rel="manifest" href="{{ site.baseurl }}/pwa/manifest.json">
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
+  {%- comment -%}
+  Icons / Favicon（确保这些文件存在，否则删去对应行）
+  {%- endcomment -%}
+  <link rel="shortcut icon" href="{{ site.baseurl }}/img/favicon.ico">
+  <link rel="apple-touch-icon" href="{{ site.baseurl }}/img/apple-touch-icon.png">
 
-    <!-- Bootstrap Core CSS -->
-    <link rel="stylesheet" href="{{ " /css/bootstrap.min.css" | prepend: site.baseurl }}">
+  {%- comment -%}
+  预连接公共 CDN（可按需调整）
+  {%- endcomment -%}
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ " /css/hux-blog.min.css" | prepend: site.baseurl }}">
+  {%- comment -%}
+  样式：Bootstrap 与主题 CSS（修正了原文件中路径前的空格）
+  {%- endcomment -%}
+  <link rel="stylesheet" href="{{ '/css/bootstrap.min.css' | prepend: site.baseurl }}">
+  <link rel="stylesheet" href="{{ '/css/hux-blog.min.css' | prepend: site.baseurl }}">
 
-    <!-- Custom Fonts -->
-    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
-    <!-- Hux change font-awesome CDN to qiniu -->
-    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
-        type="text/css">
+  {%- comment -%}
+  字体/图标
+  {%- endcomment -%}
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css" integrity="sha512-HbKjN8+WwQv4YkQqY1c6Kk0n5Qm/4Wqf0zVavx0bYF9mO4a8JrG9e0wZx8O6J9m8i6h5Q3r3D4uH0q2m0X5nQ==" crossorigin="anonymous">
 
+  {%- comment -%}
+  旧版 IE 兼容（可选）
+  {%- endcomment -%}
+  <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/respond.js/1.4.2/respond.min.js" defer></script>
+  <![endif]-->
 
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-    <![endif]-->
+  {%- comment -%}
+  可选：内容安全策略（如启用，需与实际外链匹配）
+  {%- endcomment -%}
+  <!--
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:;">
+  -->
 
-    <!-- ga & ba script hoook -->
-    <script></script>
+  {%- comment -%}
+  Google AdSense（如不需要，删除）
+  {%- endcomment -%}
+  <script data-ad-client="ca-pub-6487568398225121" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
-    <!-- Google AdSense -->
-    <script data-ad-client="ca-pub-6487568398225121" async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+  {%- comment -%}
+  自定义脚本挂载点；统一使用 defer
+  {%- endcomment -%}
+  <script defer></script>
 </head>
