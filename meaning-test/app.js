@@ -10,7 +10,6 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
 
 function mapLikertToFive(raw){
-  // raw in 1..7 -> 1..5
   return 1 + (raw - 1) * (4/6);
 }
 function clip(x, lo=1, hi=5){ return Math.max(lo, Math.min(hi, x)); }
@@ -46,34 +45,31 @@ function init(){
   $('#download').addEventListener('click', downloadJSON);
   $('#restart').addEventListener('click', ()=>location.reload());
 
-  // 绑定 MBTI 卡片式下拉交互
+  // 绑定新版 MBTI 交互
   bindMBTI();
 }
 
-/* ===================== MBTI 读取（卡片式四轴 + 未测开关） ===================== */
+/* ===================== MBTI：读取 ===================== */
 function readMBTIProbs(){
-  // “未测”直接不使用先验
-  if ($('#mbti-none') && $('#mbti-none').checked) return null;
+  // “未测” => 不用先验
+  if ($('#mbti-none')?.checked) return null;
 
   const getV = id => (document.querySelector('.mbti-select[data-target="'+id+'"]')?.getAttribute('data-value') || '');
-  const ei = getV('ei');   // E/I
-  const ns = getV('ns');   // N/S
-  const ft = getV('ft');   // F/T
-  const pj = getV('pj');   // P/J
+  const ei = getV('ei');
+  const ns = getV('ns');
+  const ft = getV('ft');
+  const pj = getV('pj');
 
-  // 全空 => 不使用先验
   if(ei==='' && ns==='' && ft==='' && pj==='') return null;
 
   function pairProb(v, a, b){
     if(v==='')  return null;
-    if(v==='X') return {[a]:0.5, [b]:0.5};
-    if(v===a)  return {[a]:1.0, [b]:0.0};
-    if(v===b)  return {[a]:0.0, [b]:1.0};
+    if(v==='X') return {[a]:0.5,[b]:0.5};
+    if(v===a)  return {[a]:1.0,[b]:0.0};
+    if(v===b)  return {[a]:0.0,[b]:1.0};
     return null;
   }
 
-  // 注意：先验里 A/C/D 的公式使用 I/E、N/S、F/T、P/J 的方向，
-  // 这里把四轴都转成 {I,E,N,S,F,T,P,J} 概率。
   const eiP = pairProb(ei,'I','E') || {I:0.5,E:0.5};
   const nsP = pairProb(ns,'N','S') || {N:0.5,S:0.5};
   const ftP = pairProb(ft,'F','T') || {F:0.5,T:0.5};
@@ -82,59 +78,80 @@ function readMBTIProbs(){
   const xCount = [ei,ns,ft,pj].filter(v=>v==='X').length;
   const unset  = [ei,ns,ft,pj].filter(v=>v==='').length;
 
-  return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
+  return { prob:{...eiP,...nsP,...ftP,...pjP}, meta:{xCount, unset} };
 }
 
-/* 绑定卡片式下拉：点击/悬停展开，点击选项写入 data-value 并更新按钮文案；“未测”勾选时清空并禁用 */
+/* ===================== MBTI：交互绑定 ===================== */
 function bindMBTI(){
-  // 选项点击：写值 + 改按钮文本
-  document.querySelectorAll('.mbti-select .mbti-menu li').forEach(li=>{
-    li.addEventListener('click', function(){
-      const val = this.getAttribute('data-v');
-      const wrap = this.closest('.mbti-select');
-      wrap.setAttribute('data-value', val);
-      wrap.querySelector('.mbti-current').textContent = (val==='' ? '未填' : val);
-      wrap.classList.remove('mt-open');
+  const selects = Array.from(document.querySelectorAll('.mbti-select'));
+
+  // 悬停/进入时展开；离开时延迟收起
+  const closeTimers = new WeakMap();
+  function open(wrap){
+    if (wrap.classList.contains('is-disabled')) return;
+    clearTimeout(closeTimers.get(wrap));
+    wrap.classList.add('mt-open');
+  }
+  function close(wrap){
+    const t = setTimeout(()=>wrap.classList.remove('mt-open'), 180);
+    closeTimers.set(wrap, t);
+  }
+
+  selects.forEach(wrap=>{
+    // 选项点击：写值并收起
+    wrap.querySelectorAll('.mbti-menu li').forEach(li=>{
+      li.addEventListener('click', function(){
+        if (wrap.classList.contains('is-disabled')) return;
+        const v = this.getAttribute('data-v') || '';
+        wrap.setAttribute('data-value', v);
+        wrap.querySelector('.mbti-current').textContent = (v==='' ? '未填' : v);
+        wrap.classList.remove('mt-open');
+      });
     });
+
+    // 点击按钮也可展开/收起（移动端友好）
+    const btn = wrap.querySelector('.mbti-current');
+    if(btn){
+      btn.addEventListener('click', (e)=>{
+        if (wrap.classList.contains('is-disabled')) return;
+        wrap.classList.toggle('mt-open');
+        e.stopPropagation();
+      });
+    }
+
+    // 悬停开启 + 离开延迟关闭（穿越间隙不断开）
+    wrap.addEventListener('mouseenter', ()=>open(wrap));
+    wrap.addEventListener('mouseleave', ()=>close(wrap));
   });
 
-  // 点击当前值也能展开（移动端友好）
-  document.querySelectorAll('.mbti-select .mbti-current').forEach(btn=>{
-    btn.addEventListener('click', function(e){
-      const wrap = this.closest('.mbti-select');
-      wrap.classList.toggle('mt-open');
-      e.stopPropagation();
-    });
-  });
-
-  // 点击外部区域 => 收起所有打开的
+  // 点击外部关闭所有
   document.addEventListener('click', function(e){
     document.querySelectorAll('.mbti-select.mt-open').forEach(w=>{
       if(!w.contains(e.target)) w.classList.remove('mt-open');
     });
   });
 
-  // “我没有做过 MBTI 测试”
-  const none = document.getElementById('mbti-none');
-  if(none){
-    none.addEventListener('change', function(){
-      const rail = document.querySelector('.mbti-rail');
-      if(this.checked){
-        rail.classList.add('disabled');
-        document.querySelectorAll('.mbti-select').forEach(s=>{
-          s.setAttribute('data-value','');
-          const cur = s.querySelector('.mbti-current');
-          if(cur) cur.textContent = '未填';
-          s.classList.remove('mt-open');
-        });
-      }else{
-        rail.classList.remove('disabled');
+  // “未测”勾选：只禁用四个选择器本身（不屏蔽复选框）
+  const none = $('#mbti-none');
+  function setDisabled(disabled){
+    selects.forEach(s=>{
+      s.classList.toggle('is-disabled', disabled);
+      if(disabled){
+        s.setAttribute('data-value','');
+        const cur = s.querySelector('.mbti-current');
+        if(cur) cur.textContent = '未填';
+        s.classList.remove('mt-open');
       }
     });
   }
+  if(none){
+    none.addEventListener('change', ()=> setDisabled(none.checked));
+    // 初始同步一次（防止浏览器记忆勾选）
+    setDisabled(none.checked);
+  }
 }
 
-/* ===================== 问卷渲染/读取与计分（保持不变） ===================== */
+/* ===================== 问卷/计分（原样） ===================== */
 function renderSurvey(){
   const form = $('#surveyForm');
   form.innerHTML = '';
@@ -169,7 +186,6 @@ function readSurvey(){
 function average(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
 
 function computeSurveyDims(answers){
-  // map to 1..5 and average per dim
   const dims = {A:[],C:[],D:[]};
   for(const it of ITEMS){
     const raw = answers[it.id];
@@ -177,11 +193,7 @@ function computeSurveyDims(answers){
     if(it.reverse) score = mapLikertToFive(8 - raw);
     dims[it.dim].push(score * (it.weight||1.0));
   }
-  return {
-    A_s: average(dims.A),
-    C_s: average(dims.C),
-    D_s: average(dims.D)
-  };
+  return { A_s: average(dims.A), C_s: average(dims.C), D_s: average(dims.D) };
 }
 
 function alphaFromMBTI(meta){
@@ -189,8 +201,7 @@ function alphaFromMBTI(meta){
   const x = meta.xCount + meta.unset;
   let alpha_base = 0.0;
   if(meta.unset===4) return 0.0;
-  if(x===0) alpha_base = CFG.alpha_caps.full;
-  else alpha_base = CFG.alpha_caps.x;
+  alpha_base = (x===0) ? CFG.alpha_caps.full : CFG.alpha_caps.x;
 
   let certainty = 1.0;
   if(x===1)      certainty = CFG.x_certainty["1"];
@@ -233,6 +244,7 @@ function scoreAll(read){
     prior: mbti ? {A_p, C_p, D_p, alpha: +alpha.toFixed(3)} : null,
     survey_raw: dims
   };
+
   const tLow = CFG.thresholds.low, tMid = CFG.thresholds.mid;
   let macro = null;
   if(report.A < tLow){
