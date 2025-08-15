@@ -1,75 +1,87 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>意义姿态测试（原初意义论·天平论）</title>
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-  <header class="container">
-    <h1>意义姿态测试</h1>
-    <p class="subtitle">基于“结构生成论—原初意义论—天平论—元行为心理学”的六维模型</p>
-  </header>
+---
+layout: page
+title: 意义姿态测试
+description: 基于“结构生成论—原初意义论—天平论—元行为心理学”的六维模型
+header-img: /img/meaning-bg.jpg   # 可换成你喜欢的头图；没有就先用 /img/home-bg.jpg
+permalink: /meaning-test/
+---
 
-  <main class="container">
-    <section id="intro" class="card">
-      <h2>说明</h2>
-      <ol>
-        <li>本测试用于研究“意义问题”的生存姿态。所有条目均为 1–7 级李克特量表。</li>
-        <li>不收集个人身份信息，所有计算在本地浏览器完成。可导出 JSON 结果。</li>
-      </ol>
-      <button id="startBtn" class="btn primary">开始测试</button>
-    </section>
+<div class="mt-page">
 
-    <section id="mbti" class="card hidden">
-      <h2>MBTI（可选）</h2>
-      <p>在 MBTI 测试中，您是：</p>
-      <div class="mbti-row">
-        <label><input type="radio" name="ei" value="I"> i 人</label>
-        <label><input type="radio" name="ei" value="E"> e 人</label>
-        <label><input type="radio" name="ei" value="X"> i/e 人</label>
-        <label><input type="radio" name="ei" value=""> 我没有做过 MBTI 测试</label>
-      </div>
-      <div class="mbti-row">
-        <label>E/I 不确定请选 X；未测请选择留空。其余三轴（N/S, F/T, J/P）可选填：</label>
-      </div>
-      <div class="mbti-row grid-4">
-        <div><label>N/S：
-          <select id="ns"><option value="">未填</option><option value="N">N</option><option value="S">S</option><option value="X">X</option></select>
-        </label></div>
-        <div><label>F/T：
-          <select id="ft"><option value="">未填</option><option value="F">F</option><option value="T">T</option><option value="X">X</option></select>
-        </label></div>
-        <div><label>P/J：
-          <select id="pj"><option value="">未填</option><option value="P">P</option><option value="J">J</option><option value="X">X</option></select>
-        </label></div>
-      </div>
-      <button id="toSurvey" class="btn">进入问卷</button>
-    </section>
+  <div class="mt-toolbar">
+    <a class="mt-btn mt-btn-back" href="{{ site.baseurl }}/">← 返回首页</a>
+  </div>
 
-    <section id="survey" class="card hidden">
-      <h2>基线问卷</h2>
-      <form id="surveyForm"></form>
-      <div class="actions">
-        <button id="submitSurvey" class="btn primary">提交</button>
-      </div>
-    </section>
+  <div class="mt-wrap mt-app">
+    <!-- ===== 下面是你原本的主体内容（仅删掉原来的 <html><head><body> 壳） ===== -->
 
-    <section id="report" class="card hidden">
-      <h2>结果</h2>
-      <div id="reportContent"></div>
-      <div class="actions">
-        <button id="download" class="btn">下载 JSON</button>
-        <button id="restart" class="btn">重新开始</button>
-      </div>
-    </section>
-  </main>
+    <header class="mt-header">
+      <h1>意义姿态测试</h1>
+      <p class="subtitle">基于“结构生成论—原初意义论—天平论—元行为心理学”的六维模型</p>
+    </header>
 
-  <footer class="container">
-    <p>© 意义姿态测试 · 仅供学术探索使用</p>
-  </footer>
+    <main>
+      <section id="intro" class="card">
+        <h2>说明</h2>
+        <ol>
+          <li>本测试用于研究“意义问题”的生存姿态。所有条目均为 1–7 级李克特量表。</li>
+          <li>不收集个人身份信息，所有计算在本地浏览器完成。可导出 JSON 结果。</li>
+        </ol>
+        <button id="startBtn" class="btn primary">开始测试</button>
+      </section>
 
-  <script src="./app.js"></script>
-</body>
-</html>
+      <section id="mbti" class="card hidden">
+        <h2>MBTI（可选）</h2>
+        <p>在 MBTI 测试中，您是：</p>
+        <div class="mbti-row">
+          <label><input type="radio" name="ei" value="I"> i 人</label>
+          <label><input type="radio" name="ei" value="E"> e 人</label>
+          <label><input type="radio" name="ei" value="X"> i/e 人</label>
+          <label><input type="radio" name="ei" value=""> 我没有做过 MBTI 测试</label>
+        </div>
+        <div class="mbti-row">
+          <label>E/I 不确定请选 X；未测请选择留空。其余三轴（N/S, F/T, J/P）可选填：</label>
+        </div>
+        <div class="mbti-row grid-4">
+          <div><label>N/S：
+            <select id="ns"><option value="">未填</option><option value="N">N</option><option value="S">S</option><option value="X">X</option></select>
+          </label></div>
+          <div><label>F/T：
+            <select id="ft"><option value="">未填</option><option value="F">F</option><option value="T">T</option><option value="X">X</option></select>
+          </label></div>
+          <div><label>P/J：
+            <select id="pj"><option value="">未填</option><option value="P">P</option><option value="J">J</option><option value="X">X</option></select>
+          </label></div>
+        </div>
+        <button id="toSurvey" class="btn">进入问卷</button>
+      </section>
+
+      <section id="survey" class="card hidden">
+        <h2>基线问卷</h2>
+        <form id="surveyForm"></form>
+        <div class="actions">
+          <button id="submitSurvey" class="btn primary">提交</button>
+        </div>
+      </section>
+
+      <section id="report" class="card hidden">
+        <h2>结果</h2>
+        <div id="reportContent"></div>
+        <div class="actions">
+          <button id="download" class="btn">下载 JSON</button>
+          <button id="restart" class="btn">重新开始</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mt-footer">
+      <p>© 意义姿态测试 · 仅供学术探索使用</p>
+    </footer>
+
+  </div><!-- /.mt-wrap.mt-app -->
+
+</div><!-- /.mt-page -->
+
+<!-- 用站点 baseurl 引用静态资源（路径不会错） -->
+<link rel="stylesheet" href="{{ site.baseurl }}/meaning-test/styles.css">
+<script src="{{ site.baseurl }}/meaning-test/app.js"></script>
