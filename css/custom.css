@@ -123,3 +123,133 @@
 @media (max-width: 992px){
   .directory-float{ position: static; width: auto; margin: 12px 0; }
 }
+
+/* ============ 书签式右侧文章轨道 ============ */
+.bookmark-rail{
+  position: fixed;
+  right: 0;                 /* 贴屏幕右侧 */
+  top: 120px;               /* 避开顶部大图/导航 */
+  height: 70vh;             /* 可视高 */
+  width: 320px;             /* 总占位，用于滑出后的卡宽 */
+  pointer-events: auto;
+  z-index: 5;
+  /* 通过内部裁剪，制造“上下半隐”的视觉 */
+  padding-top: 14px;
+  padding-bottom: 14px;
+  overflow: hidden;         /* 裁掉超出部分（半隐效果在此实现） */
+}
+
+/* 列表容器：使用 translateY 丝滑滚动 */
+.bookmark-rail .bm-ul{
+  margin: 0; padding: 0;
+  list-style: none;
+  transition: transform .25s ease; /* 丝滑 */
+  will-change: transform;
+}
+
+/* 单根卡（含间距共 56px，高度与 JS H 值一致） */
+.bm-item{
+  height: 52px;
+  margin: 2px 0;
+  position: relative;
+}
+
+/* 整根是链接，便于 hover 面积 */
+.bm-link{
+  position: relative;
+  display: block;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* —— 窄标题条（常态露出这一条） —— */
+.bm-tab{
+  position: absolute;
+  top: 0; right: 0;
+  width: 22px;              /* 条的宽度，可调为 18~26 */
+  height: 100%;
+  background: rgba(47,111,128,.12); /* 蓝绿系，与主题协调 */
+  border-radius: 12px 0 0 12px;
+  border: 1px solid rgba(47,111,128,.18);
+  box-shadow: 0 2px 8px rgba(0,0,0,.05) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;     /* 竖排以容纳短标题 */
+  text-orientation: mixed;
+  font-size: 12px;
+  letter-spacing: .05em;
+  color: #2f6f80;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* —— 滑出卡片 —— */
+.bm-panel{
+  position: absolute;
+  top: 0;
+  right: -260px;            /* 初始完全在屏外（不露出最右） */
+  width: 260px;             /* 卡片宽度（与 .bookmark-rail 宽度配合） */
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 14px 0 0 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.10);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform .18s ease, box-shadow .18s ease;
+  transform: translateX(0);      /* 我们通过 right 固定位置，再用 transform 做微动 */
+  pointer-events: none;          /* 避免遮挡 hover 判断 */
+}
+
+/* 文案样式 */
+.bm-title{
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.bm-date{
+  font-size: 12px;
+  color: #6b7280;
+  margin-left: 8px;
+}
+
+/* 悬停：卡片从右向左“滑入”，并轻微浮起 */
+.bm-item:hover .bm-panel{
+  transform: translateX(-260px); /* 刚好全部滑入可视 */
+  box-shadow: 0 16px 40px rgba(31, 107, 123, .18);
+}
+.bm-item:hover .bm-tab{
+  background: rgba(47,111,128,.20);
+  border-color: rgba(47,111,128,.28);
+}
+
+/* 小屏：关闭固定定位，回落为普通流布局 */
+@media (max-width: 992px){
+  .bookmark-rail{
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 12px 0;
+  }
+  .bm-item{ height: 56px; }
+  .bm-tab{ display: none; }
+  .bm-panel{
+    position: relative;
+    right: auto;
+    width: 100%;
+    border-radius: 14px;
+    transform: none !important;
+    pointer-events: auto;
+  }
+  .bm-item:hover .bm-panel{ box-shadow: 0 8px 24px rgba(0,0,0,.10); }
+}
