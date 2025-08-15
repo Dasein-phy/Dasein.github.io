@@ -1,88 +1,93 @@
 {% comment %}
-    @param {Boolean} center 
+  用法：{% include sns-links.html center=true %}
+  需要在 _config.yml 里配置各平台的 “username/ID”，不要写完整 URL。
+  另外可选配置 *display_name*，用于页面展示的昵称。
 {% endcomment %}
 
-{% if include.center %}
-<ul class="list-inline text-center">
-{% else %}
-<ul class="list-inline">
-{% endif %}
+{% assign center = include.center | default: false %}
+{% if center %}<ul class="sns-links list-inline text-center sns-links-rich">
+{% else %}<ul class="sns-links list-inline sns-links-rich">{% endif %}
 
-  {% if site.RSS %}
-  <li>
-    <a href="{{ "/feed.xml" | prepend: site.baseurl }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
-      </span>
-    </a>
-  </li>
-  {% endif %}
+  {%- assign has_any = false -%}
 
-  {% if site.twitter_username %}
-  <li>
-    <a href="https://twitter.com/{{ site.twitter_username }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
-      </span>
-    </a>
-  </li>
-  {% endif %}
-
-  {% if site.zhihu_username %}
+  {%- if site.zhihu_username -%}{%- assign has_any = true -%}
   <li>
     <a target="_blank" href="https://www.zhihu.com/people/{{ site.zhihu_username }}">
       <span class="fa-stack fa-lg">
         <i class="fa fa-circle fa-stack-2x"></i>
-        <!-- 直接显示“冬酱”文字 -->
-        <strong class="fa-stack-1x fa-inverse" style="font-size: 0.6em;">冬酱</strong>
+        <i class="fa fa-stack-1x fa-inverse">知</i>
       </span>
+      <span class="sns-text">知乎 · {{ site.zhihu_display_name | default: site.zhihu_username }}</span>
     </a>
   </li>
-  {% endif %}
+  {%- endif -%}
 
-  {% if site.weibo_username %}
-  <li>
-    <a target="_blank" href="http://weibo.com/{{ site.weibo_username }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
-      </span>
-    </a>
-  </li>
-  {% endif %}
-
-  {% if site.facebook_username %}
-  <li>
-    <a target="_blank" href="https://www.facebook.com/{{ site.facebook_username }}">
-      <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
-      </span>
-    </a>
-  </li>
-  {% endif %}
-
-  {% if site.github_username %}
+  {%- if site.github_username -%}{%- assign has_any = true -%}
   <li>
     <a target="_blank" href="https://github.com/{{ site.github_username }}">
       <span class="fa-stack fa-lg">
         <i class="fa fa-circle fa-stack-2x"></i>
         <i class="fa fa-github fa-stack-1x fa-inverse"></i>
       </span>
+      <span class="sns-text">GitHub · {{ site.github_display_name | default: site.github_username }}</span>
     </a>
   </li>
-  {% endif %}
+  {%- endif -%}
 
-  {% if site.linkedin_username %}
+  {%- if site.twitter_username -%}{%- assign has_any = true -%}
   <li>
-    <a target="_blank" href="https://www.linkedin.com/in/{{ site.linkedin_username }}">
+    <a target="_blank" href="https://twitter.com/{{ site.twitter_username }}">
       <span class="fa-stack fa-lg">
         <i class="fa fa-circle fa-stack-2x"></i>
-        <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+        <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
       </span>
+      <span class="sns-text">Twitter · {{ site.twitter_display_name | default: site.twitter_username }}</span>
     </a>
   </li>
-  {% endif %}
+  {%- endif -%}
+
+  {%- if site.bilibili_uid -%}{%- assign has_any = true -%}
+  <li>
+    <a target="_blank" href="https://space.bilibili.com/{{ site.bilibili_uid }}">
+      <span class="fa-stack fa-lg">
+        <i class="fa fa-circle fa-stack-2x"></i>
+        <i class="fa fa-play fa-stack-1x fa-inverse"></i>
+      </span>
+      <span class="sns-text">Bilibili · {{ site.bilibili_display_name | default: site.bilibili_uid }}</span>
+    </a>
+  </li>
+  {%- endif -%}
+
+  {%- if site.wechat_official -%}{%- assign has_any = true -%}
+  <li class="wechat">
+    <a href="javascript:void(0)" onclick="var w=document.getElementById('wechat-qr'); if(w){w.classList.toggle('show');}">
+      <span class="fa-stack fa-lg">
+        <i class="fa fa-circle fa-stack-2x"></i>
+        <i class="fa fa-wechat fa-stack-1x fa-inverse"></i>
+      </span>
+      <span class="sns-text">公众号 · {{ site.wechat_official }}</span>
+    </a>
+    {% if site.wechat_qr %}
+    <div id="wechat-qr" class="wechat-qr">
+      <img src="{{ site.wechat_qr | prepend: site.baseurl }}" alt="WeChat QR">
+    </div>
+    {% endif %}
+  </li>
+  {%- endif -%}
+
+  {%- if site.RSS -%}{%- assign has_any = true -%}
+  <li>
+    <a href="{{ "/feed.xml" | prepend: site.baseurl }}">
+      <span class="fa-stack fa-lg">
+        <i class="fa fa-circle fa-stack-2x"></i>
+        <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
+      </span>
+      <span class="sns-text">RSS</span>
+    </a>
+  </li>
+  {%- endif -%}
+
+  {%- if has_any == false -%}
+    <li><span class="sns-text" style="opacity:.7">（未配置社交链接）</span></li>
+  {%- endif -%}
 </ul>
