@@ -261,3 +261,8 @@
 .sns-vert a{ color:#2f6f80; text-decoration:none; }
 .sns-vert a:hover{ text-decoration:underline; }
 .sns-vert .sns-mute{ color:#6b7280; }
+
+/* 保险：主列里不允许出现人物卡或最新文章目录 */
+.post-col > .author-card,
+.post-col > .directory-card { display: none !important; }
+
