@@ -247,3 +247,28 @@
 .post-card.special-card{
   border-top: none !important;
 }
+
+/* 1) 彻底覆盖 hux-blog.css 里对 .card 的演示尺寸 */
+.card{
+  width: auto !important;
+  height: auto !important;
+  margin: 0;                /* 我们自己控制间距，不用演示用的 16px */
+  border-radius: 18px;      /* 保持你喜欢的圆角 */
+}
+
+/* 2) special-card 顶部留白更小、去除一切可能的“横线” */
+.post-card.special-card{ padding-top: 10px; padding-bottom: 16px; border-top: none !important; }
+.post-card.special-card > hr,
+.post-card.special-card hr:first-child{ display:none !important; margin:0 !important; border:0 !important; }
+.post-card.special-card::before,
+.post-card.special-card::after,
+.post-card.special-card .post-title::before,
+.post-card.special-card .post-title::after{ content:none !important; display:none !important; border:0 !important; }
+
+/* 3) 作者卡标题行更贴顶（再抠 2px） */
+.special-card .sc-head{ margin: 2px 0 6px; }
+.special-card .sc-title{ margin-top: 0; }
+
+/* 4) 保底：任何把子元素当“分隔线”的上边框也关掉 */
+.post-card.special-card > *:first-child{ border-top: none !important; }
+
