@@ -1,87 +1,83 @@
 ---
-layout: default
-title: 首页
+layout: page
 description: "「离开世界之前 一切都是过程」"
 ---
 
-{% include intro-header.html type='page' short=true %}
-
-<div class="container home-grid">
-  <div class="row">
-    <!-- 左侧：卡片式文章流 -->
-    <div class="col-lg-7 col-md-8">
-      {% assign posts_sorted = paginator.posts | default: site.posts | sort: 'date' | reverse %}
-
-      {% for post in posts_sorted %}
-      <article class="post-card">
-        <a class="post-card__link" href="{{ post.url | prepend: site.baseurl }}">
-          {% if post.cover or post.header-img %}
-            <div class="post-card__cover" style="background-image:url('{{ post.cover | default: post.header-img | prepend: site.baseurl }}');"></div>
+<div class="dz-layout post-list">
+  <!-- 左侧：文章卡片流 -->
+  <div class="post-col">
+    {% for post in paginator.posts %}
+    <article class="card post-card">
+      <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">
+        <h2 class="post-title">{{ post.title }}</h2>
+        {% if post.subtitle %}
+          <h3 class="post-subtitle">{{ post.subtitle }}</h3>
+        {% endif %}
+        <p class="excerpt">
+          {% if post.lang == 'en' %}
+            {{ post.content | strip_html | truncate: 300 }}
+          {% else %}
+            {{ post.content | strip_html | truncate: 200 }}
           {% endif %}
-          <div class="post-card__body">
-            <h2 class="post-card__title">{{ post.title }}</h2>
-            {% if post.subtitle %}
-              <h3 class="post-card__subtitle">{{ post.subtitle }}</h3>
-            {% endif %}
-            <p class="post-card__excerpt">
-              {{ post.content | strip_html | truncate: 160 }}
-            </p>
-            <div class="post-card__meta">
-              <span class="post-card__date">{{ post.date | date: "%Y-%m-%d" }}</span>
-              {% if post.tags and post.tags.size > 0 %}
-              <span class="post-card__tags">
-                {% for t in post.tags limit:3 %}
-                  <span class="tag-chip">{{ t }}</span>
-                {% endfor %}
-                {% if post.tags.size > 3 %}<span class="tag-chip more">…</span>{% endif %}
-              </span>
-              {% endif %}
-            </div>
-          </div>
-        </a>
-      </article>
-      {% endfor %}
-
-      <!-- 分页 -->
-      {% if paginator.total_pages > 1 %}
-      <ul class="pager pager--spaced">
-        {% if paginator.previous_page %}
-        <li class="previous">
-          <a href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
-        </li>
+        </p>
+      </a>
+      <div class="post-meta">
+        <span>{{ post.date | date: "%Y-%m-%d" }}</span>
+        {% if post.tags and post.tags.size > 0 %}
+          <span class="dot">•</span>
+          <span class="tags">
+            {% for t in post.tags limit:3 %}
+              <span class="tag">{{ t }}</span>
+            {% endfor %}
+          </span>
         {% endif %}
-        {% if paginator.next_page %}
-        <li class="next">
-          <a href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
-        </li>
-        {% endif %}
-      </ul>
-      {% endif %}
-    </div>
-
-    <!-- 中间：保留原有侧栏（人物/标签/友链） -->
-    <aside class="col-lg-3 col-md-4 sidebar-container">
-      {% include featured-tags.html bottom=true %}
-      {% include friends.html %}
-    </aside>
-
-    <!-- 最右：按时间排序的目录（Timeline / 目录） -->
-    <aside class="col-lg-2 d-none d-lg-block right-timeline">
-      <div class="timeline-card">
-        <h5 class="timeline-title">目录</h5>
-        <ul class="timeline-list">
-          {% assign all_posts = site.posts | sort: 'date' | reverse %}
-          {% for p in all_posts %}
-          <li class="timeline-item">
-            <a href="{{ p.url | prepend: site.baseurl }}" class="timeline-link" title="{{ p.title }}">
-              <span class="timeline-dot"></span>
-              <span class="timeline-date">{{ p.date | date: "%y-%m-%d" }}</span>
-              <span class="timeline-text">{{ p.title }}</span>
-            </a>
-          </li>
-          {% endfor %}
-        </ul>
       </div>
-    </aside>
+    </article>
+    {% endfor %}
+
+    <!-- 翻页 -->
+    {% if paginator.total_pages > 1 %}
+    <ul class="pager pager-clean">
+      {% if paginator.previous_page %}
+      <li class="previous">
+        <a class="btn btn-pager" href="{{ paginator.previous_page_path | prepend: site.baseurl | replace: '//', '/' }}">&larr; 上一页</a>
+      </li>
+      {% endif %}
+      {% if paginator.next_page %}
+      <li class="next">
+        <a class="btn btn-pager" href="{{ paginator.next_page_path | prepend: site.baseurl | replace: '//', '/' }}">下一页 &rarr;</a>
+      </li>
+      {% endif %}
+    </ul>
+    {% endif %}
   </div>
+
+  <!-- 右侧：人物卡 + 文章目录（细条卡） -->
+  <aside class="sidebar-col">
+    <!-- 人物卡 -->
+    <section class="card author-card">
+      <div class="author-head">
+        <img class="avatar" src="{{ site.sidebar-avatar | default: '/img/avatar.jpg' | prepend: site.baseurl }}" alt="avatar">
+        <div class="meta">
+          <div class="name">{{ site.title }}</div>
+          <div class="desc">{{ site.sidebar-about-description }}</div>
+        </div>
+      </div>
+      {% include sns-links.html %}
+    </section>
+
+    <!-- 时间目录（最新在上） -->
+    <section class="card directory-card">
+      <h6 class="card-title">最新文章</h6>
+      <div class="dir-list">
+        {% assign _sorted = site.posts | sort: 'date' | reverse %}
+        {% for p in _sorted limit: 40 %}
+        <div class="dir-item">
+          <a href="{{ p.url | prepend: site.baseurl }}" title="{{ p.title }}">{{ p.title }}</a>
+          <span class="dir-date">{{ p.date | date: "%m-%d" }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
 </div>
