@@ -1,42 +1,40 @@
-/* meaning-test/app.js — clean v3 (MBTI fix + progressive likert + signed weights)
-   - Fixes:
-     * MBTI “未测” id = #mbti-none (not #mbti-untested)
-     * Hover open with 150ms delay; stays open while moving into menu
-     * Click on options writes hidden inputs (#mbti-ei/ns/ft/pj)
-     * Toggling “未测” disables/reenables axis rail without greying the checkbox row
-     * Likert 7 evenly spaced, large hit area, re-select allowed, gentle feedback
-*/
+/* ===== 意义姿态测试 app.js — 精修稳定版 ===== */
 
+/* ---------- 资源路径 ---------- */
 const cfgPath = './app.config.json';
 const mbtiPriorPath = './mbti.prior.config.json';
 const itemsPathV2 = './items.baseline.v2.json';
 const itemsPathV1 = './items.baseline.json';
 
-// ---- global state ----
+/* ---------- 全局状态 ---------- */
 let CFG = null;
 let MBTI = null;
-let ITEMS = [];                  // {id,text,w,A,C,D,M,S,L}
-let ANSWERS = new Map();         // id -> raw(1..7)
+/** 统一题库：{id, text, w, A,C,D,M,S,L} */
+let ITEMS = [];
+/** 答案：Map<id, raw(1..7)> */
+const ANSWERS = new Map();
+/** 当前要渲染的题目索引（0-based） */
 let currentIndex = 0;
 
-// ---- DOM helpers ----
-const $  = sel => document.querySelector(sel);
-const $$ = sel => document.querySelectorAll(sel);
+/* ---------- DOM 快捷 ---------- */
+const $  = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-// ---- utils ----
+/* ---------- 工具 ---------- */
+function mapLikertToFive(raw){ return 1 + (raw - 1) * (4/6); }
+function clip(x, lo=1, hi=5){ return Math.max(lo, Math.min(hi, x)); }
 const sleep = ms => new Promise(r=>setTimeout(r, ms));
-const clip  = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
-const mapLikertToFive = raw => 1 + (raw - 1) * (4/6);
-const escapeHTML = s => String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+}
 
+/* ---------- 加载 ---------- */
 async function tryFetchJSON(path){
   try{
     const r = await fetch(path);
-    if(!r.ok) throw new Error('HTTP '+r.status);
+    if(!r.ok) throw new Error(path + ' not ok');
     return await r.json();
-  }catch(e){
-    return null;
-  }
+  }catch(e){ return null; }
 }
 
 async function loadAll(){
@@ -47,11 +45,11 @@ async function loadAll(){
   CFG = cfg; MBTI = prior;
 
   let v2 = await tryFetchJSON(itemsPathV2);
-  if(Array.isArray(v2) && v2.length){
+  if (Array.isArray(v2) && v2.length){
     ITEMS = v2.map(n => ({
       id: n.id,
-      text: n.text || n.stem || ('Q'+n.id),
-      w: (typeof n.w === 'number' ? n.w : 1.0),
+      text: n.text || n.stem || ('Q' + n.id),
+      w:   (typeof n.w === 'number' ? n.w : 1.0),
       A: n.A||0, C: n.C||0, D: n.D||0, M: n.M||0, S: n.S||0, L: n.L||0
     }));
   }else{
@@ -59,146 +57,162 @@ async function loadAll(){
     if(!Array.isArray(v1) || !v1.length) throw new Error('题库加载失败');
     ITEMS = v1.map(n => ({
       id: n.id,
-      text: n.text || n.stem || ('Q'+n.id),
+      text: n.text || n.stem || ('Q' + n.id),
       w: (typeof n.weight === 'number' ? n.weight : 1.0),
       A: 0, C: 0, D: 0, M: 0, S: 0, L: 0
     }));
   }
 }
 
-// ---- init ----
+/* ---------- 初始化入口 ---------- */
 function init(){
-  const startBtn = $('#startBtn');
-  if(startBtn){
-    startBtn.addEventListener('click', ()=>{
-      $('#intro')?.classList.add('hidden');
-      $('#mbti')?.classList.remove('hidden');
-      initMBTIDropdowns();
+  const btnStart   = $('#startBtn');
+  const btnToSurvey= $('#toSurvey');
+  const btnSubmit  = $('#submitSurvey');
+  const btnDownload= $('#download');
+  const btnRestart = $('#restart');
+
+  if(btnStart){
+    btnStart.addEventListener('click', ()=>{
+      const intro = $('#intro');
+      const mbti  = $('#mbti');
+      if(intro) intro.classList.add('hidden');
+      if(mbti)  mbti.classList.remove('hidden');
+      initMBTIDropdowns(); // 初始化 MBTI 交互
     });
   }
 
-  $('#toSurvey')?.addEventListener('click', ()=>{
-    $('#mbti')?.classList.add('hidden');
-    $('#survey')?.classList.remove('hidden');
-    startProgressiveSurvey();
-  });
+  if(btnToSurvey){
+    btnToSurvey.addEventListener('click', ()=>{
+      const mbti  = $('#mbti');
+      const survey= $('#survey');
+      if(mbti)  mbti.classList.add('hidden');
+      if(survey) survey.classList.remove('hidden');
+      startProgressiveSurvey();
+    });
+  }
 
-  $('#submitSurvey')?.addEventListener('click', ()=>{
-    const read = readSurvey();
-    if(!read.ok){ alert('还有题未作答。'); return; }
-    const res = scoreAll(read);
-    renderReport(res);
-  });
+  if(btnSubmit){
+    btnSubmit.addEventListener('click', ()=>{
+      const read = readSurvey();
+      if(!read.ok){ alert('还有题未作答。'); return; }
+      const result = scoreAll(read);
+      renderReport(result);
+    });
+  }
 
-  $('#download')?.addEventListener('click', downloadJSON);
-  $('#restart')?.addEventListener('click', ()=>location.reload());
+  if(btnDownload) btnDownload.addEventListener('click', downloadJSON);
+  if(btnRestart)  btnRestart.addEventListener('click', ()=>location.reload());
 }
 
-// ---- MBTI rail (hover-open w/150ms, click select, “未测” toggle) ----
+/* ---------- MBTI 交互（四轴侧滑菜单 + 150ms 延时） ---------- */
+/** 只对 .mbti-select 加/解禁；不触碰 .mbti-rail 本身，避免 pointer-events:none */
 function initMBTIDropdowns(){
-  const rail = $('#mbti-axes');
-  const none = $('#mbti-none');
+  const rail      = $('#mbti-axes');          // 容器
+  const untested  = $('#mbti-untested');      // “未测”复选框
+  const selects   = $$('.mbti-select', rail); // 四个选择器
+  const currents  = $$('.mbti-current', rail);
 
-  // timers map for open/close delay per select
-  const openTimers  = new WeakMap();
-  const closeTimers = new WeakMap();
-
-  function open(sel){
-    clearTimeout(closeTimers.get(sel));
-    const t = setTimeout(()=> sel.classList.add('mt-open'), 150);
-    openTimers.set(sel, t);
-  }
-  function close(sel){
-    clearTimeout(openTimers.get(sel));
-    const t = setTimeout(()=> sel.classList.remove('mt-open'), 150);
-    closeTimers.set(sel, t);
+  // 保护：如果页面还没切到新结构，直接返回
+  if(!rail || !selects.length){
+    // 兼容旧表单也允许
+    return;
   }
 
-  // bind each dropdown
-  rail?.querySelectorAll('.mbti-select').forEach(sel=>{
-    const current = sel.querySelector('.mbti-current');
-    const menu    = sel.querySelector('.mbti-menu');
-    const axisKey = sel.dataset.target;           // 'ei' | 'ns' | 'ft' | 'pj'
-    const hidden  = $('#mbti-' + axisKey);
+  // —— 悬停延时：每个 select 各自管理定时器 ——
+  selects.forEach(sel=>{
+    sel.__openTimer = null;
+    sel.__closeTimer = null;
 
-    // hover open/close with delay
-    sel.addEventListener('mouseenter', ()=> open(sel));
-    sel.addEventListener('mouseleave', ()=> close(sel));
-
-    // click toggles (for mobile)
-    current?.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      sel.classList.toggle('mt-open');
+    sel.addEventListener('mouseenter', ()=>{
+      clearTimeout(sel.__closeTimer);
+      sel.__openTimer = setTimeout(()=> sel.classList.add('mt-open'), 150);
+    });
+    sel.addEventListener('mouseleave', ()=>{
+      clearTimeout(sel.__openTimer);
+      sel.__closeTimer = setTimeout(()=> sel.classList.remove('mt-open'), 160);
     });
 
-    // option click
-    menu?.querySelectorAll('li').forEach(li=>{
-      li.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const v = li.dataset.v ?? '';
-        if(hidden) hidden.value = v;
-        if(current) current.textContent = li.textContent.trim();
+    // 点击当前框也可立即展开
+    const cur = $('.mbti-current', sel);
+    if(cur){
+      cur.addEventListener('click', ()=>{
+        clearTimeout(sel.__closeTimer);
+        sel.classList.add('mt-open');
+      });
+    }
 
-        // highlight active option
-        menu.querySelectorAll('li').forEach(x=>x.classList.remove('is-active'));
+    // 点击选项：写值 + 文案 + 选中态
+    const menu = $('.mbti-menu', sel);
+    const target = sel.getAttribute('data-target'); // ei/ns/ft/pj
+    const hidden = target ? $('#mbti-' + target) : null;
+
+    if(menu){
+      menu.addEventListener('click', (e)=>{
+        const li = e.target.closest('li[data-v]');
+        if(!li) return;
+        const val = li.getAttribute('data-v'); // '', 'E','I','X'...
+        // 写隐藏 input
+        if(hidden) hidden.value = val;
+        // 文案
+        if(cur) cur.textContent = (val==='' ? '未填' : val);
+        // 激活样式
+        $$('.mbti-menu li', sel).forEach(x=>x.classList.remove('is-active'));
         li.classList.add('is-active');
-
+        // 关闭菜单（保持干净）
         sel.classList.remove('mt-open');
       });
-    });
+    }
   });
 
-  // outside click closes any open select
-  document.addEventListener('click', (e)=>{
-    if(!rail) return;
-    if(rail.contains(e.target)) return;
-    rail.querySelectorAll('.mbti-select.mt-open').forEach(s=>s.classList.remove('mt-open'));
-  });
-
-  // “我没有做过 MBTI 测试”
-  if(none){
-    none.addEventListener('change', ()=>{
-      const disabled = none.checked;
-      rail?.classList.toggle('disabled', disabled);
-      if(disabled){
-        // reset values & labels
-        const pairs = [
-          ['ei','未填'],
-          ['ns','未填'],
-          ['ft','未填'],
-          ['pj','未填']
-        ];
-        pairs.forEach(([k,label])=>{
-          const h = $('#mbti-'+k);
-          const sel = rail.querySelector(`.mbti-select[data-target="${k}"]`);
-          const cur = sel?.querySelector('.mbti-current');
-          if(h) h.value = '';
-          if(cur) cur.textContent = label;
-          sel?.querySelectorAll('.mbti-menu li').forEach(li=>li.classList.remove('is-active'));
-          sel?.classList.remove('mt-open');
-        });
-      }
+  // —— “未测”开关：只禁用四个选择器，不改变 rail 的 pointer-events —— 
+  if(untested){
+    untested.addEventListener('change', ()=>{
+      const checked = untested.checked;
+      selects.forEach(sel=>{
+        sel.classList.toggle('is-disabled', checked);
+        // 同时清空隐藏值与文案
+        const target = sel.getAttribute('data-target');
+        const hidden = target ? $('#mbti-' + target) : null;
+        const cur    = $('.mbti-current', sel);
+        if(checked){
+          if(hidden) hidden.value = '';
+          if(cur) cur.textContent = '未填';
+        }
+      });
     });
   }
 }
 
-// read MBTI probs; return null if none/untested
+/** 读取 MBTI 概率（新/旧结构均兼容；未测 → 返回 null） */
 function readMBTIProbs(){
-  const none = $('#mbti-none');
-  if(none && none.checked) return null;
+  const untested = $('#mbti-untested');
+  if(untested && untested.checked) return null;
 
-  const ei = ($('#mbti-ei')?.value || '');
-  const ns = ($('#mbti-ns')?.value || '');
-  const ft = ($('#mbti-ft')?.value || '');
-  const pj = ($('#mbti-pj')?.value || '');
+  // —— 新结构：隐藏 input —— 
+  const eiNew = $('#mbti-ei'), nsNew = $('#mbti-ns'), ftNew = $('#mbti-ft'), pjNew = $('#mbti-pj');
+  let ei = eiNew ? (eiNew.value||'') : '';
+  let ns = nsNew ? (nsNew.value||'') : '';
+  let ft = ftNew ? (ftNew.value||'') : '';
+  let pj = pjNew ? (pjNew.value||'') : '';
+
+  // —— 旧结构回退：EI 用一组 radio，其余三轴 select —— 
+  if(!eiNew && !nsNew && !ftNew && !pjNew){
+    const eiRadio = $$('input[name="ei"]');
+    const picked  = eiRadio.find(x=>x.checked);
+    ei = picked ? (picked.value||'') : '';
+    ns = ($('#ns')?.value || '');
+    ft = ($('#ft')?.value || '');
+    pj = ($('#pj')?.value || '');
+  }
 
   if(ei==='' && ns==='' && ft==='' && pj==='') return null;
 
   function pairProb(v, a, b){
     if(v==='') return null;
-    if(v==='X') return {[a]:0.5, [b]:0.5};
-    if(v===a)  return {[a]:1.0, [b]:0.0};
-    if(v===b)  return {[a]:0.0, [b]:1.0};
+    if(v==='X') return { [a]:0.5, [b]:0.5 };
+    if(v===a)  return { [a]:1.0, [b]:0.0 };
+    if(v===b)  return { [a]:0.0, [b]:1.0 };
     return null;
   }
   const eiP = pairProb(ei,'I','E') || {I:0.5,E:0.5};
@@ -209,99 +223,103 @@ function readMBTIProbs(){
   const xCount = [ei,ns,ft,pj].filter(v=>v==='X').length;
   const unset  = [ei,ns,ft,pj].filter(v=>v==='').length;
 
-  return {prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset}};
+  return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
 }
 
-// ---- progressive survey ----
+/* ---------- Progressive 问卷 ---------- */
 function startProgressiveSurvey(){
   ANSWERS.clear();
   currentIndex = 0;
   const form = $('#surveyForm');
   if(form) form.innerHTML = '';
-  renderOneItem(currentIndex);
+  // 先隐藏提交按钮
   const actions = $('#submitSurvey')?.closest('.actions');
   if(actions) actions.style.display = 'none';
+  // 渲染首题
+  renderOneItem(currentIndex);
 }
 
+/** 构建 7 点小圆（整格热区），仅返回容器 */
 function buildLikert7(name, onPick){
   const wrap = document.createElement('div');
   wrap.className = 'likert7';
   for(let v=1; v<=7; v++){
-    const cell = document.createElement('label');
-    cell.className = 'likert-option' + (v===4 ? ' is-center' : '');
+    const opt = document.createElement('label');
+    opt.className = 'likert-option' + (v===4 ? ' is-center':'');
     const input = document.createElement('input');
     input.type = 'radio';
     input.name = name;
     input.value = String(v);
     const dot = document.createElement('span');
     dot.className = 'likert-dot';
-    cell.appendChild(input);
-    cell.appendChild(dot);
+    opt.appendChild(input);
+    opt.appendChild(dot);
 
+    // 改变选中态（可重复选择，不锁定）
     input.addEventListener('change', ()=>{
-      onPick(v, cell);
-    });
-    // Clicking anywhere in the cell triggers input
-    cell.addEventListener('click', (e)=>{
-      if(input.disabled) return;
-      input.checked = true;
-      input.dispatchEvent(new Event('change', {bubbles:true}));
+      // 清除旧态
+      wrap.querySelectorAll('.likert-option').forEach(k=>k.classList.remove('is-selected','tapped'));
+      opt.classList.add('is-selected','tapped');
+      setTimeout(()=>opt.classList.remove('tapped'), 130);
+      const raw = parseInt(input.value,10);
+      onPick(raw);
     });
 
-    wrap.appendChild(cell);
+    wrap.appendChild(opt);
   }
   return wrap;
 }
 
+/** 渲染单题（确保不会重复渲染下一题） */
 function renderOneItem(idx){
   const form = $('#surveyForm');
   if(!form) return;
 
   if(idx >= ITEMS.length){
+    // 所有题渲染完，显示提交
     const actions = $('#submitSurvey')?.closest('.actions');
     if(actions) actions.style.display = 'flex';
     return;
   }
-  const it = ITEMS[idx];
 
+  // 如果该题 DOM 已存在，则不重复创建
+  if(form.querySelector(`[data-q-idx="${idx}"]`)) return;
+
+  const it = ITEMS[idx];
   const node = document.createElement('div');
   node.className = 'item card slide-in';
-  node.dataset.qid = it.id;
+  node.setAttribute('data-qid', it.id);
+  node.setAttribute('data-q-idx', idx);
 
   node.innerHTML = `
     <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)}</h3>
     <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
   `;
-  const scale = buildLikert7('q'+it.id, (raw, cell)=>{
-    // allow re-select: just overwrite
+
+  const scale = buildLikert7('q' + it.id, (raw)=>{
+    // 记录答案
     ANSWERS.set(it.id, raw);
-
-    // visual selection
-    node.querySelectorAll('.likert-option').forEach(l=>l.classList.remove('is-selected','tapped'));
-    cell.classList.add('is-selected','tapped');
-    setTimeout(()=>cell.classList.remove('tapped'), 120);
-
-    // reveal next
-    currentIndex = idx + 1;
-    if(currentIndex === idx + 1){   // guard
-      renderOneItem(currentIndex);
-      const last = form.lastElementChild;
-      if(last){
-        last.scrollIntoView({behavior:'smooth', block:'center'});
+    // 若未触发下一题，则只触发一次
+    if(node.getAttribute('data-next-spawned') !== '1'){
+      node.setAttribute('data-next-spawned', '1');
+      // 渲染下一题
+      const nextIdx = idx + 1;
+      renderOneItem(nextIdx);
+      // 滚动到新出场的题
+      const nextEl = form.querySelector(`[data-q-idx="${nextIdx}"]`);
+      if(nextEl){
+        // 微延时，等待布局稳定
         setTimeout(()=>{
-          const rect = last.getBoundingClientRect();
-          const y = window.scrollY + rect.top - Math.min(120, window.innerHeight*0.15);
-          window.scrollTo({top:y, behavior:'smooth'});
+          nextEl.scrollIntoView({ behavior:'smooth', block:'center' });
         }, 60);
       }
     }
   });
-
   node.appendChild(scale);
   form.appendChild(node);
 }
 
-// read answers -> {ok, answers:{}}
+/** 读取答案（确认全答完） */
 function readSurvey(){
   if(ANSWERS.size < ITEMS.length) return {ok:false};
   const out = {};
@@ -313,7 +331,7 @@ function readSurvey(){
   return {ok:true, answers: out};
 }
 
-// ---- scoring (signed weighted averages) ----
+/* ---------- 计分：带符号多维加权 ---------- */
 function computeSurveyDims(answers){
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
@@ -322,35 +340,37 @@ function computeSurveyDims(answers){
   for(const it of ITEMS){
     const raw = answers[it.id];
     const score = mapLikertToFive(raw); // 1..5
-    const w = (typeof it.w === 'number' ? it.w : 1.0);
-    [['A',it.A],['C',it.C],['D',it.D],['M',it.M],['S',it.S],['L',it.L]].forEach(([k,coef])=>{
+    const w = (typeof it.w === 'number') ? it.w : 1.0;
+
+    [['A',it.A],['C',it.C],['D',it.D],['M',it.M],['S',it.S],['L',it.L]]
+    .forEach(([k,coef])=>{
       const c = Number(coef)||0;
       if(c===0) return;
-      const weightAbs = Math.abs(w*c);
-      const signed = (c>=0) ? score : (6 - score); // reverse within 1..5 range
+      const weightAbs = Math.abs(w * c);
+      const signed    = (c >= 0) ? score : (6 - score); // 反向：1->5, 5->1
       acc[k].num += weightAbs * signed;
       acc[k].den += weightAbs;
     });
   }
-  const avg = x => x.den>0 ? (x.num/x.den) : 3.0;
+  const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
   return {
     A_s: clip(avg(acc.A)), C_s: clip(avg(acc.C)), D_s: clip(avg(acc.D)),
     M_s: clip(avg(acc.M)), S_s: clip(avg(acc.S)), L_s: clip(avg(acc.L))
   };
 }
 
-// MBTI prior
+/* ---------- MBTI 先验与融合 ---------- */
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
   const x = meta.xCount;
-  let base = 0.30;
-  if(x>=1) base = 0.20;
+  let base = (x>=1) ? 0.20 : 0.30;
   let cert = 1.0;
   if(x===1) cert = 0.67;
   else if(x===2) cert = 0.50;
   else if(x>=3) cert = 0.40;
   return base * cert;
 }
+
 function priorsFromProbs(p){
   const {A0,C0,D0} = MBTI.baseline;
   const cA = MBTI.coeff.A, cC = MBTI.coeff.C, cD = MBTI.coeff.D;
@@ -360,14 +380,15 @@ function priorsFromProbs(p){
   let D = D0 + cD["N-S"]*dNS + cD["T-F"]*dTF + cD["P-J"]*dPJ + cD["F*J"]*(p.F*p.J) + cD["N*P"]*(p.N*p.P);
   return {A_p:clip(A), C_p:clip(C), D_p:clip(D)};
 }
-const fuse = (prior, survey, alpha)=> alpha*prior + (1-alpha)*survey;
+
+function fuse(prior, survey, alpha){ return alpha*prior + (1-alpha)*survey; }
 
 function scoreAll(read){
   const mbti = readMBTIProbs();
   const dims = computeSurveyDims(read.answers);
+
   let A_final = dims.A_s, C_final = dims.C_s, D_final = dims.D_s;
   let A_p=null, C_p=null, D_p=null, alpha=0.0;
-
   if(mbti){
     const pri = priorsFromProbs(mbti.prob);
     A_p = pri.A_p; C_p = pri.C_p; D_p = pri.D_p;
@@ -388,9 +409,10 @@ function scoreAll(read){
     survey_raw: dims
   };
 
-  // simple macro hint (same as previous)
+  // 宏类型粗判（与你之前规则一致）
   const tLow = 2.5, tMid = 3.5;
   let macro = null;
+
   if(report.A < tLow){
     macro = (report.C >= 3.5) ? "A1 未触及—高依赖外部建构" : "A0 未触及—低觉察沉浸";
   }else if(report.A >= tMid && report.D >= tMid){
@@ -410,10 +432,11 @@ function scoreAll(read){
     macro = "B2 建构—透明虚构（候选）";
   }
   report.macro_hint = macro;
+
   return report;
 }
 
-// ---- report ----
+/* ---------- 报告 ---------- */
 function renderReport(res){
   $('#survey')?.classList.add('hidden');
   const wrap = $('#reportContent');
@@ -442,7 +465,7 @@ function renderReport(res){
   window.__meaningReport = res;
 }
 
-// ---- download ----
+/* ---------- 下载 ---------- */
 function downloadJSON(){
   const data = window.__meaningReport || {};
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -453,7 +476,7 @@ function downloadJSON(){
   URL.revokeObjectURL(url);
 }
 
-// ---- boot ----
+/* ---------- 启动 ---------- */
 window.addEventListener('DOMContentLoaded', async ()=>{
   await loadAll();
   init();
