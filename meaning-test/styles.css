@@ -1,15 +1,16 @@
 /* ===== 意义姿态测试样式（scoped 到 .mt-app） ===== */
 
 /* ---------- 主题色（方便全站后续复用） ---------- */
+:root{
+  --mt-fg:#1a1a1a;
+  --mt-muted:#666;
+  --mt-brand:#718771;     /* 主品牌绿 */
+  --mt-accent:#FFD9A3;    /* 强调色（选中外圈） */
+  --mt-secondary:#73AE52; /* 次强调绿（备用） */
+  --mt-radius:16px;
+}
 
- :root{
-   --mt-fg:#1a1a1a;
-   --mt-muted:#666;
-   --mt-brand:#718771;   /* 主品牌绿 */
-   --mt-accent:#FFD9A3;  /* 强调色 */
-+  --mt-secondary:#73AE52; /* 次强调绿（备用） */
-   --mt-radius:16px;
- }
+/* 选中项小绿描边 */
 .mt-app .mbti-menu li.is-active{ border-color: var(--mt-secondary); }
 
 /* ---------- 基础 ---------- */
@@ -69,7 +70,7 @@
    结构：
    .mbti-rail > .mbti-item[data-axis]
      > .axis
-     > .mbti-select[data-axis]
+     > .mbti-select[data-target]
          .mbti-current
          ul.mbti-menu > li[data-v]
    ========================================================= */
@@ -110,6 +111,12 @@
   pointer-events:none;
   transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
 }
+/* ★★ 关键：当 .mbti-select 被 JS 加上 .mt-open 时，真正展开并可点 */
+.mt-app .mbti-select.mt-open .mbti-menu{
+  opacity:1;
+  transform: translateX(0) scale(1);
+  pointer-events:auto;
+}
 
 .mt-app .mbti-menu li{
   display:inline-block;
@@ -130,6 +137,8 @@
 
 /* 仅灰/禁用四个选择器，不影响“未测”行 */
 .mt-app .mbti-rail.disabled .mbti-select { opacity:.5; pointer-events:none; }
+.mbti-select.is-disabled .mbti-current{ opacity:.5; cursor:not-allowed; }
+.mbti-select.is-disabled .mbti-menu{ display:none !important; }
 
 /* 小屏：菜单向下展开并自适应换行 */
 @media (max-width: 768px){
@@ -142,16 +151,19 @@
   }
 }
 
-/* =========================================
-   Likert 7 小圆：等距铺满 + 大热区 + 选中色 #FFD9A3
-   ========================================= */
+/* =========================================================
+   Likert 7 小圆：等距铺满 + 大热区 + 选中色 #FFD9A3（空心）
+   （与 app.js 的 .likert7 / .likert-option / .likert-dot 配套）
+   ========================================================= */
+
+/* 两侧提示文字 */
 .item .scale-hint{
   display:flex; justify-content:space-between; align-items:center;
   color:#8b8f97; font-size:12px; margin-bottom:6px;
 }
 
-/* 容器按 7 等分铺满，保证等距 */
-.dot-scale{
+/* 容器按 7 等分铺满 */
+.likert7{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   align-items:center;
@@ -160,37 +172,41 @@
 }
 
 /* 每一格是大热区（不改变小圆视觉大小） */
-.dot-scale .dot{
+.likert-option{
   position:relative;
-  display:flex; align-items:center; justify-content:center;
-  min-height:40px;
-  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:40px; /* 扩大可点范围 */
 }
-.dot-scale .dot input{
+.likert-option input{
   position:absolute; inset:0; opacity:0; cursor:pointer;
 }
-.dot-scale .dot span{
+
+/* 可见的小圆点 */
+.likert-dot{
   width:16px; height:16px;
   border:2px solid #bfc7cf;
   border-radius:50%;
-  background:transparent;
+  background:transparent;  /* 默认空心 */
   pointer-events:none;
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
 }
 
-/* 中心点略大，做视觉锚点 */
-.dot-scale .dot.dot-center span{ transform: scale(1.16); }
+/* 中心点略大作锚点 */
+.likert-option.is-center .likert-dot{ transform: scale(1.16); }
 
-/* hover 轻微放大（避免抖动感） */
-.dot-scale .dot:hover span{ transform: scale(1.08); }
+/* 悬停轻微放大（避免抖动感） */
+.likert-option:hover .likert-dot{ transform: scale(1.08); }
 
-/* 选中：空心大圆 + 柔光外圈（#FFD9A3） */
-.dot-scale .dot input:checked + span{
-  border-color:#FFD9A3;
-  box-shadow:0 0 0 3px rgba(255,217,163,.35);
+/* 选中：空心 + #FFD9A3 外圈柔光 */
+.likert-option.is-selected .likert-dot{
+  border-color: var(--mt-accent);
+  background: transparent;                           /* 保持空心 */
+  box-shadow: 0 0 0 3px rgba(255,217,163,.35);
 }
 
-/* 进入动画（逐题滑出） */
+/* 题目出现动画 */
 .item.slide-in{ animation: slideInUp .28s ease both; }
 @keyframes slideInUp{
   from{ opacity:0; transform: translateY(8px); }
