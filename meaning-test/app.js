@@ -86,22 +86,78 @@ function normalizeItem(node){
   };
 }
 
-async function loadAll(){
-  const [cfg, prior] = await Promise.all([
-    fetch(cfgPath).then(r=>r.json()),
-    fetch(mbtiPriorPath).then(r=>r.json())
-  ]);
-  CFG = cfg; MBTI = prior;
+// ---- 在 loadAll() 内，替换 v2 分支 ----
+let v2 = await tryFetchJSON(itemsPathV2);
+if (Array.isArray(v2) && v2.length){
+  ITEMS = v2.map(n => {
+    const w = n.weights || {};
+    return {
+      id: n.id,
+      text: n.text || n.stem || ('Q' + n.id),
+      // 统一字段：A/C/D/S/L + M_func/M_aff；默认 0
+      A: +w.A || 0,
+      C: +w.C || 0,
+      D: +w.D || 0,
+      S: +w.S || 0,
+      L: +w.L || 0,
+      M_func: +w.M_func || 0,
+      M_aff: +w.M_aff || 0,
+      // 题面权重（整体重要度），若日后需要可额外加；先默认 1
+      w: (typeof n.w === 'number' ? n.w : 1.0),
+      meta: {
+        is_attention: !!n.is_attention,
+        duplicate_of: n.duplicate_of || null
+      }
+    };
+  });
 
-  let raw = await tryFetchJSON(itemsPathV2);
-  if(!Array.isArray(raw) || !raw.length){
-    raw = await tryFetchJSON(itemsPathV1);
-  }
-  if(!Array.isArray(raw) || !raw.length){
-    throw new Error('题库加载失败：v2 与 v1 均不可用');
-  }
+  // —— 可控随机出题（打散同类）——
+  // 1) 先按“主导维度”归桶（看绝对权重最大的维度）
+  const buckets = {A:[],C:[],D:[],M:[],S:[],L:[]};
+  ITEMS.forEach(it=>{
+    const absMap = {
+      A: Math.abs(it.A), C: Math.abs(it.C), D: Math.abs(it.D),
+      M: Math.max(Math.abs(it.M_func||0), Math.abs(it.M_aff||0)), // M 取两者的较大值做主导参考
+      S: Math.abs(it.S), L: Math.abs(it.L)
+    };
+    let dom = 'A', maxv = absMap.A;
+    for(const k of ['C','D','M','S','L']){
+      if(absMap[k] > maxv){ dom = k; maxv = absMap[k]; }
+    }
+    buckets[dom].push(it);
+  });
 
-  ITEMS = raw.map(normalizeItem);
+  // 2) 每个桶内部做可复现打乱（用 URL ?seed=xxx 控制）
+  const seed = (new URL(location.href)).searchParams.get('seed') || 'mt-seed';
+  function seededShuffle(arr, s){
+    let h = 2166136261;
+    for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    const out = arr.slice();
+    for(let i=out.length-1;i>0;i--){
+      h ^= (h<<13); h ^= (h>>>7); h ^= (h<<17);
+      const j = Math.abs(h) % (i+1);
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+  for(const k in buckets){ buckets[k] = seededShuffle(buckets[k], seed + '-' + k); }
+
+  // 3) 轮盘式交错抽题：A→C→D→M→S→L 轮转，尽量避免同类连在一起
+  const order = [];
+  const keys = ['A','C','D','M','S','L'];
+  let has = true, p = 0;
+  while(has){
+    has = false;
+    for(let step=0; step<keys.length; step++){
+      const k = keys[(p+step)%keys.length];
+      if(buckets[k].length){
+        order.push(buckets[k].shift());
+        has = true;
+      }
+    }
+    p++;
+  }
+  ITEMS = order;
 }
 
 /* ---------- 初始化入口：绑定按钮/切换卡片 ---------- */
@@ -339,39 +395,54 @@ function readSurvey(){
   return {ok:true, answers: out};
 }
 
-/* ---------- 计分：带符号多维加权（★含 M_func / M_aff） ----------
- * 对每道题的 1..7 原始值，先转 1..5；对每个维度单独累计：
- *   - 若该题在该维度的系数 c>0 → 直接用 score
- *   - 若 c<0 → 反向（6 - score），等价于 1↔5 翻转
- *   - 权重采用 |w * c| 进入分子分母，得到该维的加权平均
- * 输出：
- *   { A_s, C_s, D_s, S_s, L_s, M_func_s, M_aff_s }
- */
+
 function computeSurveyDims(answers){
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
     S:{num:0, den:0}, L:{num:0, den:0},
     M_func:{num:0, den:0}, M_aff:{num:0, den:0}
   };
-
   for(const it of ITEMS){
     const raw = answers[it.id];
     const score = mapLikertToFive(raw); // 1..5
-    const w = (typeof it.w === 'number') ? it.w : 1.0;
+    const baseW = (typeof it.w === 'number') ? it.w : 1.0;
 
-    [
-      ['A', it.A], ['C', it.C], ['D', it.D],
-      ['S', it.S], ['L', it.L],
-      ['M_func', it.M_func], ['M_aff', it.M_aff]
-    ].forEach(([k,coef])=>{
+    // 通用累计器
+    function accOne(key, coef){
       const c = Number(coef)||0;
       if(c===0) return;
-      const weightAbs = Math.abs(w * c);
+      const w = Math.abs(baseW * c);
       const signed = (c >= 0) ? score : (6 - score);
-      acc[k].num += weightAbs * signed;
-      acc[k].den += weightAbs;
-    });
+      acc[key].num += w * signed;
+      acc[key].den += w;
+    }
+
+    accOne('A', it.A);
+    accOne('C', it.C);
+    accOne('D', it.D);
+    accOne('S', it.S);
+    accOne('L', it.L);
+    accOne('M_func', it.M_func);
+    accOne('M_aff',  it.M_aff);
   }
+
+  const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
+  const m_func = clip(avg(acc.M_func));
+  const m_aff  = clip(avg(acc.M_aff));
+  // 输出一个 M_s 供现有报告用（不丢信息：也把子分一并塞进 survey_raw 里）
+  const M_s = Math.max(m_func, m_aff);
+
+  return {
+    A_s: clip(avg(acc.A)),
+    C_s: clip(avg(acc.C)),
+    D_s: clip(avg(acc.D)),
+    S_s: clip(avg(acc.S)),
+    L_s: clip(avg(acc.L)),
+    M_s,
+    M_detail: {m_func, m_aff}
+  };
+}
+
 
   const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
 
