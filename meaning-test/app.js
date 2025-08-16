@@ -386,6 +386,61 @@ function computeSurveyDims(answers){
   };
 }
 
+/* ---------- 自相矛盾/两极并存指数 → 注入 L（领域一致）惩罚 ---------- */
+/**
+ * 思路：针对 A/C/D 三维，分别统计“正向条目均分”(pos) 与 “反向条目均分”(neg)。
+ * 若 pos 与 neg 都明显 >3（同意区），说明同一维度上出现“同时赞同对立叙事”，
+ * 这定义为两极并存（自相矛盾）信号。取三维的平均作为 ci∈[0,1]。
+ * ci 越高，L 越低： L_adj = clip(L_s - 1.2 * ci, 1, 5)。
+ */
+function computeAmbivalenceFromAnswers(answers){
+  const dims = ['A','C','D']; // 先聚焦 A/C/D 三维的自相矛盾
+  const agg = {};
+  dims.forEach(k=>{
+    agg[k] = {pos:{num:0,den:0}, neg:{num:0,den:0}};
+  });
+
+  for(const it of ITEMS){
+    const raw = answers[it.id];
+    const score = mapLikertToFive(raw); // 1..5
+    const w = (typeof it.w==='number'? it.w : 1.0);
+    for(const k of dims){
+      const c = Number(it[k]) || 0;
+      if(c === 0) continue;
+      const weightAbs = Math.abs(w * c);
+      const signed = (c >= 0) ? score : (6 - score); // 反向：1->5, 5->1
+      if(c >= 0){
+        agg[k].pos.num += weightAbs * signed;
+        agg[k].pos.den += weightAbs;
+      }else{
+        agg[k].neg.num += weightAbs * signed;
+        agg[k].neg.den += weightAbs;
+      }
+    }
+  }
+
+  const res = {};
+  let ambList = [];
+  dims.forEach(k=>{
+    const pos = agg[k].pos.den>0 ? (agg[k].pos.num/agg[k].pos.den) : 3.0;
+    const neg = agg[k].neg.den>0 ? (agg[k].neg.num/agg[k].neg.den) : 3.0;
+    // 把“>3 的强同意”映射到 [0,1]，同时高才算矛盾：取二者较小
+    const posHi = Math.max(0, pos - 3) / 2; // 0..1
+    const negHi = Math.max(0, neg - 3) / 2; // 0..1
+    const amb   = Math.min(posHi, negHi);
+    res[k] = {pos:+pos.toFixed(2), neg:+neg.toFixed(2), amb:+amb.toFixed(3)};
+    ambList.push(amb);
+  });
+
+  // 还可加入“跨维冲突”项：C 与 D 同时很高的情形（可选）
+  // const cOverlap = Math.max(0, (computeSurveyDims(answers).C_s - 3)/2) *
+  //                  Math.max(0, (computeSurveyDims(answers).D_s - 3)/2);
+
+  const ciMicro = ambList.length ? (ambList.reduce((a,b)=>a+b,0) / ambList.length) : 0;
+  return { byDim: res, ci: +ciMicro.toFixed(3) };
+}
+
+
 /* ---------- MBTI 先验与融合 ---------- */
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
@@ -418,6 +473,11 @@ function scoreAll(read){
   const mbti = readMBTIProbs();
   const dims = computeSurveyDims(read.answers);
 
+  // —— 自相矛盾指数（注入到 L）——
+  const amb = computeAmbivalenceFromAnswers(read.answers);
+  let L_adj = clip(dims.L_s - 1.2 * amb.ci, 1, 5); // 惩罚系数 1.2 可后续回归校正
+
+  // —— 先验融合（仅 A/C/D）——
   let A_final = dims.A_s, C_final = dims.C_s, D_final = dims.D_s;
   let A_p=null, C_p=null, D_p=null, alpha=0.0;
   if(mbti){
@@ -428,6 +488,59 @@ function scoreAll(read){
     C_final = fuse(C_p, dims.C_s, alpha);
     D_final = fuse(D_p, dims.D_s, alpha);
   }
+
+  const report = {
+    A: +A_final.toFixed(2),
+    C: +C_final.toFixed(2),
+    D: +D_final.toFixed(2),
+    M: +dims.M_s.toFixed(2),
+    S: +dims.S_s.toFixed(2),
+    L: +L_adj.toFixed(2),                 // 用“惩罚后的 L”
+    prior: mbti ? {A_p, C_p, D_p, alpha:+alpha.toFixed(3)} : null,
+    survey_raw: {...dims, L_s_raw: dims.L_s}, // 额外保留“未惩罚 L”以便调参
+    ambivalence: amb                       // 输出矛盾诊断细节（便于迭代）
+  };
+
+  // —— 宏类型初判（加入 A 的过渡带分流）——
+  const tLow = 2.5, tMid = 3.5;
+  let macro = null;
+
+  if(report.A < tLow){
+    macro = (report.C >= 3.5) ? "A1 未触及—高依赖外部建构" : "A0 未触及—低觉察沉浸";
+  }
+  else if(report.A >= tMid && report.D >= tMid){
+    if(report.S >= 4.0){
+      macro = "C2 去魅—彻底停滞/冻结（候选）";
+    }else if(report.C <= 3.0 && report.L <= 3.0){
+      macro = "C1 去魅—理想自由人（候选）";
+    }else{
+      macro = (report.C <= 2.5) ? "C0 去魅—“解”候选" : "C1/C2 去魅—待细分";
+    }
+  }
+  else if(report.A >= 3.0 && report.D <= tMid){
+    if(report.C >= 4.0) macro = "B0 建构—高建构依赖";
+    else if(report.C >= 3.0 && report.L <= 3.0) macro = "B1 建构—局部建构（候选）";
+    else if(report.C < 2.5 && report.M >= 3.5) macro = "B3 建构—功能主义姿态（候选）";
+    else macro = "B2 建构—透明虚构（候选）";
+  }
+  // === 新增：A 的“过渡带”2.5–3.0 的细分 ===
+  else if(report.A >= 2.5 && report.A < 3.0){
+    if(report.D >= 3.6 && report.C <= 3.0){
+      macro = "C-seed 去魅萌发（候选）";
+    }else if(report.C >= 3.8 && report.D <= 3.2){
+      macro = (report.L <= 3.0) ? "B1 建构—局部建构（边界）" : "B0 建构—高建构依赖（边界）";
+    }else{
+      macro = "过渡带—待观察（默认 B2 候选）";
+    }
+  }
+  else{
+    macro = "B2 建构—透明虚构（候选）";
+  }
+
+  report.macro_hint = macro;
+  return report;
+}
+
 
   // 展示用动因强度：取两者较大者；同时保留子分给判读
   const M_func = dims.M_func_s;
