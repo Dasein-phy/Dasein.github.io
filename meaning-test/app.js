@@ -1,28 +1,28 @@
-/* meaning-test/app.js — 稳健 MBTI（悬停150ms/可点）+ 渐进问卷 + 带符号多维加权 */
+/* meaning-test/app.js — init先行(按钮必生效) + 稳健MBTI(悬停150ms) + 渐进问卷 + 带符号多维加权 + 颜色注入 */
 
-// ---------- 路径 ----------
+/* ---------- 路径 ---------- */
 const cfgPath = './app.config.json';
 const mbtiPriorPath = './mbti.prior.config.json';
 const itemsPathV2 = './items.baseline.v2.json';
 const itemsPathV1 = './items.baseline.json';
 
-// ---------- 全局 ----------
+/* ---------- 全局 ---------- */
 let CFG = null, MBTI = null, ITEMS = [];
 let ANSWERS = new Map();
 let revealedUntil = -1;
 
-// ---------- DOM utils ----------
+/* ---------- DOM 工具 ---------- */
 const $  = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-// ---------- misc ----------
+/* ---------- 杂项 ---------- */
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const clip  = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
 const mapLikertToFive = raw => 1 + (raw - 1) * (4/6);
 const escapeHTML = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 async function tryFetchJSON(path){ try{ const r=await fetch(path); if(!r.ok) throw 0; return await r.json(); }catch{ return null; }}
 
-// ---------- 主题色注入 ----------
+/* ---------- 注入站点三色(保证随处可用) ---------- */
 function injectThemeColors(){
   const root = document.documentElement;
   root.style.setProperty('--mt-brand',   '#718771');
@@ -33,14 +33,19 @@ function injectThemeColors(){
   root.style.setProperty('--accent', '#FFD9A3');
 }
 
-// ---------- 加载 ----------
-async function loadAll(){
-  const [cfg, prior] = await Promise.all([
-    fetch(cfgPath).then(r=>r.json()),
-    fetch(mbtiPriorPath).then(r=>r.json())
-  ]);
-  CFG = cfg; MBTI = prior;
+/* ---------- 安全加载(即使失败也不阻塞UI) ---------- */
+async function loadAllSafe(){
+  try{
+    const [cfg, prior] = await Promise.all([
+      fetch(cfgPath).then(r=>r.json()),
+      fetch(mbtiPriorPath).then(r=>r.json())
+    ]);
+    CFG = cfg; MBTI = prior;
+  }catch(e){
+    console.warn('[meaning-test] 配置加载失败：', e);
+  }
 
+  // 题库：v2优先，失败用v1，再失败就空数组（但UI可用）
   let v2 = await tryFetchJSON(itemsPathV2);
   if(v2 && v2.length){
     ITEMS = v2.map(n=>({
@@ -49,58 +54,64 @@ async function loadAll(){
     }));
   }else{
     const v1 = await tryFetchJSON(itemsPathV1);
-    if(!v1) throw new Error('题库加载失败');
-    ITEMS = v1.map(n=>({ id:n.id, text:n.text||n.stem||('Q'+n.id), w:(+n.weight||1), A:0,C:0,D:0,M:0,S:0,L:0 }));
+    if(v1 && v1.length){
+      ITEMS = v1.map(n=>({ id:n.id, text:n.text||n.stem||('Q'+n.id), w:(+n.weight||1), A:0,C:0,D:0,M:0,S:0,L:0 }));
+    }else{
+      console.warn('[meaning-test] 题库未加载成功。');
+      ITEMS = [];
+    }
   }
 }
 
-// ---------- 初始化 ----------
+/* ---------- 初始化：先绑定事件，再后台加载 ---------- */
 function init(){
   injectThemeColors();
 
+  // Start
   $('#startBtn')?.addEventListener('click', ()=>{
     $('#intro')?.classList.add('hidden');
     $('#mbti')?.classList.remove('hidden');
-    initMBTIDropdowns();
+    initMBTIDropdowns(); // 每次进入确保事件就绪
   });
 
+  // To Survey
   $('#toSurvey')?.addEventListener('click', ()=>{
     $('#mbti')?.classList.add('hidden');
     $('#survey')?.classList.remove('hidden');
     startProgressiveSurvey();
   });
 
+  // 提交
   $('#submitSurvey')?.addEventListener('click', ()=>{
     const read = readSurvey();
-    if(!read.ok){ alert('还有题未作答。'); return; }
+    if(!read.ok){ alert('还有题未作答，或题库未加载。'); return; }
     const result = scoreAll(read);
     renderReport(result);
   });
 
+  // JSON 下载/重启
   $('#download')?.addEventListener('click', downloadJSON);
   $('#restart')?.addEventListener('click', ()=>location.reload());
+
+  // —— 后台加载数据（不影响按钮）——
+  loadAllSafe();
 }
 
-// ---------- MBTI（四个右侧展开，悬停150ms，点击稳健） ----------
+/* ---------- MBTI（四轴右侧展开：悬停150ms/点击稳定） ---------- */
 function initMBTIDropdowns(){
-  const rail = $('.mbti-rail') || $('#mbti-axes');        // 兼容两种写法
+  const rail = $('.mbti-rail') || $('#mbti-axes');
   if(!rail) return;
 
-  // 每个 .mbti-select 生成隐藏 input 与默认文案
+  // 每个轴：创建隐藏input与默认文案
   rail.querySelectorAll('.mbti-select[data-axis]').forEach(sel=>{
-    const axis = sel.getAttribute('data-axis');
-    if(!axis) return;
+    const axis = sel.getAttribute('data-axis'); if(!axis) return;
     let hid = sel.querySelector('input[type="hidden"]');
-    if(!hid){
-      hid = document.createElement('input');
-      hid.type = 'hidden'; hid.id = `mbti-${axis}`;
-      sel.appendChild(hid);
-    }
+    if(!hid){ hid = document.createElement('input'); hid.type='hidden'; hid.id=`mbti-${axis}`; sel.appendChild(hid); }
     const cur = sel.querySelector('.mbti-current');
     if(cur && !cur.textContent.trim()) cur.textContent = '未填';
   });
 
-  // 悬停延时开合（150ms）
+  // 悬停150ms开合（保留点击可开合）
   const openTimer = new WeakMap(), closeTimer = new WeakMap();
   rail.querySelectorAll('.mbti-select').forEach(sel=>{
     sel.addEventListener('mouseenter', ()=>{
@@ -113,13 +124,12 @@ function initMBTIDropdowns(){
     });
   });
 
-  // 事件委托：点击 current 切换；点击 li 赋值（data-v 或文本均可）
+  // 委托：点 current 切换；点 li 赋值（data-v 或文本兜底）
   rail.addEventListener('click', e=>{
     const cur = e.target.closest('.mbti-current');
     if(cur && rail.contains(cur)){
       const sel = cur.closest('.mbti-select');
       if(sel){
-        // 先收起其它
         rail.querySelectorAll('.mbti-select.mt-open').forEach(x=>{ if(x!==sel) x.classList.remove('mt-open'); });
         sel.classList.toggle('mt-open');
       }
@@ -142,14 +152,12 @@ function initMBTIDropdowns(){
     }
   });
 
-  // 点击外部收起
-  document.addEventListener('click', e=>{
-    if(!rail.contains(e.target)){
-      rail.querySelectorAll('.mbti-select.mt-open').forEach(s=> s.classList.remove('mt-open'));
-    }
-  });
+  // 外部点击收起
+  const outside = e=>{ if(!rail.contains(e.target)){ rail.querySelectorAll('.mbti-select.mt-open').forEach(s=>s.classList.remove('mt-open')); } };
+  document.removeEventListener('click', outside); // 防重复
+  document.addEventListener('click', outside);
 
-  // “未测”勾选：只禁用四轴，不禁用复选框
+  // “未测”勾选：只禁用四轴
   const untested = $('#mbti-untested');
   if(untested){
     untested.addEventListener('change', ()=>{
@@ -164,7 +172,7 @@ function initMBTIDropdowns(){
   }
 }
 
-// 兼容 data-v 缺失：用文本兜底（未填/E/I/X……）
+// 兼容 data-v 缺失：用文本兜底
 function normalizeMBTIValue(axis, dataV, text){
   const v = (dataV||'').trim().toUpperCase();
   if(v) return v;
@@ -177,7 +185,6 @@ function normalizeMBTIValue(axis, dataV, text){
 // 读取 MBTI 概率（未测→null）
 function readMBTIProbs(){
   if($('#mbti-untested')?.checked) return null;
-
   const readAxis = axis=>{
     const hid = $(`#mbti-${axis}`);
     if(hid) return hid.value || '';
@@ -197,8 +204,12 @@ function readMBTIProbs(){
   return { prob:{...eiP,...nsP,...ftP,...pjP}, meta:{xCount, unset} };
 }
 
-// ---------- 渐进问卷 ----------
+/* ---------- 渐进问卷 ---------- */
 function startProgressiveSurvey(){
+  if(!ITEMS.length){
+    alert('题库还在加载或加载失败，请稍后再试。');
+    return;
+  }
   ANSWERS.clear(); revealedUntil = -1;
   const form = $('#surveyForm'); if(form) form.innerHTML = '';
   renderOneItem(0);
@@ -256,14 +267,14 @@ async function renderOneItem(idx){
   revealedUntil = idx;
 }
 
-// ---------- 读取答案 ----------
+/* ---------- 读取答案 ---------- */
 function readSurvey(){
   if(ANSWERS.size < ITEMS.length) return {ok:false};
   const out = {}; for(const it of ITEMS){ const raw = ANSWERS.get(it.id); if(typeof raw!=='number') return {ok:false}; out[it.id]=raw; }
   return {ok:true, answers: out};
 }
 
-// ---------- 带符号多维加权 ----------
+/* ---------- 带符号多维加权 ---------- */
 function computeSurveyDims(answers){
   const acc = {A:{num:0,den:0}, C:{num:0,den:0}, D:{num:0,den:0}, M:{num:0,den:0}, S:{num:0,den:0}, L:{num:0,den:0}};
   for(const it of ITEMS){
@@ -281,7 +292,7 @@ function computeSurveyDims(answers){
            M_s:clip(avg(acc.M)), S_s:clip(avg(acc.S)), L_s:clip(avg(acc.L)) };
 }
 
-// ---------- MBTI 先验 ----------
+/* ---------- MBTI 先验 ---------- */
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
   let base = meta.xCount>=1 ? 0.20 : 0.30;
@@ -289,16 +300,17 @@ function alphaFromMBTI(meta){
   return base*cert;
 }
 function priorsFromProbs(p){
-  const {A0,C0,D0} = MBTI.baseline, cA=MBTI.coeff.A, cC=MBTI.coeff.C, cD=MBTI.coeff.D;
+  const {A0,C0,D0} = MBTI?.baseline||{A0:3,C0:3,D0:3};
+  const cA=MBTI?.coeff?.A||{}, cC=MBTI?.coeff?.C||{}, cD=MBTI?.coeff?.D||{};
   const dNS=(p.N-p.S), dIE=(p.I-p.E), dPJ=(p.P-p.J), dTF=(p.T-p.F);
-  let A=A0 + cA["N-S"]*dNS + cA["I-E"]*dIE + cA["P-J"]*dPJ + cA["N*T"]*(p.N*p.T) + cA["S*J"]*(p.S*p.J);
-  let C=C0 + cC["J-P"]*(p.J-p.P) + cC["F-T"]*(p.F-p.T) + cC["S-N"]*(p.S-p.N) + cC["I-E"]*dIE + cC["S*J"]*(p.S*p.J);
-  let D=D0 + cD["N-S"]*dNS + cD["T-F"]*dTF + cD["P-J"]*dPJ + cD["F*J"]*(p.F*p.J) + cD["N*P"]*(p.N*p.P);
+  let A=A0 + (cA["N-S"]||0)*dNS + (cA["I-E"]||0)*dIE + (cA["P-J"]||0)*dPJ + (cA["N*T"]||0)*(p.N*p.T) + (cA["S*J"]||0)*(p.S*p.J);
+  let C=C0 + (cC["J-P"]||0)*(p.J-p.P) + (cC["F-T"]||0)*(p.F-p.T) + (cC["S-N"]||0)*(p.S-p.N) + (cC["I-E"]||0)*dIE + (cC["S*J"]||0)*(p.S*p.J);
+  let D=D0 + (cD["N-S"]||0)*dNS + (cD["T-F"]||0)*dTF + (cD["P-J"]||0)*dPJ + (cD["F*J"]||0)*(p.F*p.J) + (cD["N*P"]||0)*(p.N*p.P);
   return {A_p:clip(A), C_p:clip(C), D_p:clip(D)};
 }
 const fuse = (p,s,a)=> a*p + (1-a)*s;
 
-// ---------- 计分 + 初判 ----------
+/* ---------- 计分 + 初判 ---------- */
 function scoreAll(read){
   const mbti = readMBTIProbs();
   const dims = computeSurveyDims(read.answers);
@@ -337,7 +349,7 @@ function scoreAll(read){
   return res;
 }
 
-// ---------- 报告 ----------
+/* ---------- 报告 ---------- */
 function renderReport(res){
   $('#survey')?.classList.add('hidden');
   const wrap = $('#reportContent');
@@ -363,7 +375,7 @@ function renderReport(res){
   window.__meaningReport = res;
 }
 
-// ---------- 下载 ----------
+/* ---------- 下载 ---------- */
 function downloadJSON(){
   const data = window.__meaningReport || {};
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -374,9 +386,8 @@ function downloadJSON(){
   URL.revokeObjectURL(url);
 }
 
-// ---------- 启动 ----------
-window.addEventListener('DOMContentLoaded', async ()=>{
-  await loadAll();
-  init();
+/* ---------- 启动：先 init 再后台加载 ---------- */
+window.addEventListener('DOMContentLoaded', ()=>{
+  init();           // 先把按钮/事件都绑上
+  // loadAllSafe() 已在 init 内调用
 });
-
