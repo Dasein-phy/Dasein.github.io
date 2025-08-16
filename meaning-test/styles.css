@@ -206,3 +206,46 @@
   from{ opacity:0; transform: translateY(8px); }
   to  { opacity:1; transform: translateY(0); }
 }
+
+/* MBTI：只有在 .mt-open 时菜单才能展开可点 */
+.mt-app .mbti-select .mbti-menu{
+  opacity:0; transform: translateX(-6px) scale(.98);
+  pointer-events:none;
+}
+.mt-app .mbti-select.mt-open .mbti-menu{
+  opacity:1; transform: translateX(0) scale(1);
+  pointer-events:auto;
+}
+
+/* “未测”时只禁用四个选择器，不把整条 rail 灰死，取消勾选即可恢复 */
+.mbti-select.is-disabled .mbti-current{ opacity:.5; cursor:not-allowed; }
+.mbti-select.is-disabled .mbti-menu{ display:none !important; }
+
+/* Likert 7：等距铺满 + 大热区 + 空心选中（#FFD9A3） */
+.mt-app .likert7{
+  display:grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  align-items:center;
+  width:100%;
+  padding:8px 0 10px;
+}
+.mt-app .likert-option{
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  min-height:40px;
+}
+.mt-app .likert-option input{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+.mt-app .likert-dot{
+  width:16px; height:16px;
+  border:2px solid #bfc7cf; border-radius:50%;
+  background:transparent; pointer-events:none;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.mt-app .likert-option.is-center .likert-dot{ transform: scale(1.16); }
+.mt-app .likert-option:hover .likert-dot{ transform: scale(1.08); }
+.mt-app .likert-option.is-selected .likert-dot{
+  border-color:#FFD9A3;
+  box-shadow:0 0 0 3px rgba(255,217,163,.35);
+}
