@@ -246,3 +246,65 @@
   width: 12px; height: 12px;
 }
 
+/* ===== Likert 7 小圆点（更大的点击热区，轻微按压动画） ===== */
+.likert7{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.likert-option{
+  position: relative;
+  width: 28px;              /* 容器尺寸 = 热区可视参考，不等于按钮尺寸 */
+  height: 28px;
+  display: inline-block;
+}
+
+/* 真正的点击热区：不可见，但可点。扩大到小圆点外 8px */
+.likert-option input{
+  position: absolute;
+  inset: -8px;              /* 扩大热区（↑ 你可以改 -10~-14 更大） */
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* 可见的小圆点（按钮本体视觉尺寸不变） */
+.likert-dot{
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 12px; height: 12px;             /* 圆点视觉大小 */
+  border: 2px solid #9aa1aa;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;                   /* 事件给 input 负责 */
+  transition: transform .12s ease, border-color .12s ease,
+              box-shadow .12s ease, background-color .12s ease;
+}
+
+/* 悬停时轻微放大一点点（不抖） */
+.likert-option:hover .likert-dot{
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 选中态：强调外圈与光晕，颜色按你要求的 #FFD9A3 */
+.likert-option.is-selected .likert-dot{
+  border-color: #FFD9A3;
+  box-shadow: 0 0 0 4px rgba(255,217,163,.25);
+  background: radial-gradient(circle at center, rgba(255,217,163,.45) 0 45%, transparent 50%);
+}
+
+/* 点击回弹：很小幅度的“按压”，避免大抖动 */
+@keyframes tap-press {
+  0%   { transform: translate(-50%,-50%) scale(1); }
+  50%  { transform: translate(-50%,-50%) scale(0.96); }
+  100% { transform: translate(-50%,-50%) scale(1); }
+}
+.likert-option.tapped .likert-dot{
+  animation: tap-press .12s ease;
+}
+
+/* —— 保险：即便你曾给已回答项目加过“锁定”样式，也强制允许再次点击 —— */
+.item [type="radio"]{ pointer-events: auto !important; }
+.item, .item *{ user-select: none; }  /* 防止快速点击误选中标注文字 */
