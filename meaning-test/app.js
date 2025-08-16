@@ -1,4 +1,4 @@
-/* meaning-test/app.js — v2 progressive + signed weights */
+/* meaning-test/app.js — v3 progressive + signed weights (final) */
 
 // ---------- 路径 ----------
 const cfgPath = './app.config.json';
@@ -11,18 +11,21 @@ const itemsPathV1 = './items.baseline.json';
 // ---------- 全局状态 ----------
 let CFG = null;
 let MBTI = null;
-let ITEMS = [];       // 统一为 {id, text, w, A,C,D,M,S,L}
-let ANSWERS = new Map(); // id -> raw(1..7)
-let currentIndex = 0;    // 正在作答的题号索引（0-based）
+let ITEMS = [];             // {id, text, w, A,C,D,M,S,L}
+const ANSWERS = new Map();  // id -> raw(1..7)
+let currentIndex = 0;       // 正在生成的题目索引（0-based）
 
 // ---------- DOM 快捷 ----------
-const $ = sel => document.querySelector(sel);
+const $  = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
 
 // ---------- 工具 ----------
-function mapLikertToFive(raw){ return 1 + (raw - 1) * (4/6); }
+function mapLikertToFive(raw){ return 1 + (raw - 1) * (4/6); } // 1..7 → 1..5
 function clip(x, lo=1, hi=5){ return Math.max(lo, Math.min(hi, x)); }
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+}
 
 // ---------- 加载 ----------
 async function tryFetchJSON(path){
@@ -42,30 +45,24 @@ async function loadAll(){
   ]);
   CFG = cfg; MBTI = prior;
 
-  // 题库优先加载 v2；失败就退回 v1 并做转换
+  // 题库优先加载 v2；失败就退回 v1 并做兼容
   let v2 = await tryFetchJSON(itemsPathV2);
   if(v2 && Array.isArray(v2) && v2.length){
-    ITEMS = v2.map(n=>{
-      return {
-        id: n.id,
-        text: n.text || n.stem || ('Q' + n.id),
-        w:   (typeof n.w === 'number' ? n.w : 1.0),
-        A: n.A||0, C: n.C||0, D: n.D||0, M: n.M||0, S: n.S||0, L: n.L||0
-      };
-    });
+    ITEMS = v2.map(n => ({
+      id:   n.id,
+      text: n.text || n.stem || ('Q' + n.id),
+      w:    (typeof n.w === 'number' ? n.w : 1.0),
+      A: n.A||0, C: n.C||0, D: n.D||0, M: n.M||0, S: n.S||0, L: n.L||0
+    }));
   }else{
-    // fallback：老版结构 items.baseline.json（需有 text/维度标记等）
     const v1 = await tryFetchJSON(itemsPathV1);
     if(!v1) throw new Error('题库加载失败');
-    ITEMS = v1.map(n=>{
-      // 尽力兼容；没有多维权重时，全部置 0（你也可以在这里临时映射）
-      return {
-        id: n.id,
-        text: n.text || n.stem || ('Q' + n.id),
-        w: (typeof n.weight === 'number' ? n.weight : 1.0),
-        A: 0, C: 0, D: 0, M: 0, S: 0, L: 0
-      };
-    });
+    ITEMS = v1.map(n => ({
+      id:   n.id,
+      text: n.text || n.stem || ('Q' + n.id),
+      w:    (typeof n.weight === 'number' ? n.weight : 1.0),
+      A: 0, C: 0, D: 0, M: 0, S: 0, L: 0      // v1 没有多维权重，先置 0
+    }));
   }
 }
 
@@ -75,7 +72,6 @@ function init(){
   $('#startBtn').addEventListener('click', ()=>{
     $('#intro').classList.add('hidden');
     $('#mbti').classList.remove('hidden');
-    // MBTI UI 初始化（hover 展开已在 CSS 完成）
     initMBTIUX();
   });
 
@@ -88,7 +84,7 @@ function init(){
 
   // 提交
   $('#submitSurvey').addEventListener('click', ()=>{
-    const answers = readSurvey(); // 从 ANSWERS 读
+    const answers = readSurvey();
     if(!answers.ok){ alert('还有题未作答。'); return; }
     const result = scoreAll(answers);
     renderReport(result);
@@ -99,37 +95,45 @@ function init(){
   $('#restart').addEventListener('click', ()=>location.reload());
 }
 
-// ---------- MBTI（分离“未测”开关 & 悬停展开保持可点） ----------
+// ---------- MBTI（未测开关 & 兼容旧结构） ----------
 function initMBTIUX(){
-  // 分离“未测”选择：勾上就禁用四轴；取消就恢复
-  const untested = $('#mbti-untested');
-  const axisWrap = $('#mbti-axes');
-  const inputs = axisWrap ? axisWrap.querySelectorAll('select') : [];
+  const untested = $('#mbti-untested') || $('#mbti_untested');
+  const axisEls = ['#mbti-ei','#mbti-ns','#mbti-ft','#mbti-pj']
+    .map(id => $(id))
+    .filter(Boolean);
+
   if(untested){
     untested.addEventListener('change', ()=>{
-      inputs.forEach(s=>{
-        s.disabled = untested.checked;
-        if(untested.checked) s.value = '';
+      axisEls.forEach(sel => {
+        sel.disabled = untested.checked;
+        if(untested.checked) sel.value = '';
       });
     });
   }
-
-  // 为了“悬停展开后鼠标移走仍可点”：通过 focus-within + 延迟收起实现
-  // 这里我们只需给容器加个 data- 属性，CSS 用 :focus-within 控制展开
-  // 若你已加对应 CSS，这里不必做更多 JS。
 }
 
-// 读取 MBTI 概率（新版来自四个下拉；若“未测”打勾，返回 null）
+function getMBTIAxisValue(){
+  // 首选新四轴下拉；若缺失，兼容旧版（ei 单选 + ns/ft/pj 下拉）
+  function v(id){ const el=$(id); return el ? (el.value || '') : ''; }
+  let ei = v('#mbti-ei'), ns = v('#mbti-ns'), ft = v('#mbti-ft'), pj = v('#mbti-pj');
+
+  if(!ei && $$('input[name="ei"]').length){
+    const sel = [...$$('input[name="ei"]')].find(x => x.checked);
+    ei = sel ? sel.value : '';
+  }
+  if(!ns && $('#ns')) ns = $('#ns').value || '';
+  if(!ft && $('#ft')) ft = $('#ft').value || '';
+  if(!pj && $('#pj')) pj = $('#pj').value || '';
+
+  return {ei, ns, ft, pj};
+}
+
+// 读取 MBTI 概率（勾选“未测”直接返回 null）
 function readMBTIProbs(){
-  const untested = $('#mbti-untested');
+  const untested = $('#mbti-untested') || $('#mbti_untested');
   if(untested && untested.checked) return null;
 
-  function val(id){ const el = $(id); return el ? (el.value || '') : ''; }
-  const ei = val('#mbti-ei'); // 'E'/'I'/'X'/''
-  const ns = val('#mbti-ns');
-  const ft = val('#mbti-ft');
-  const pj = val('#mbti-pj');
-
+  const {ei, ns, ft, pj} = getMBTIAxisValue();
   if(ei==='' && ns==='' && ft==='' && pj==='') return null;
 
   function pairProb(v, a, b){
@@ -139,6 +143,7 @@ function readMBTIProbs(){
     if(v===b)  return {[a]:0.0, [b]:1.0};
     return null;
   }
+
   const eiP = pairProb(ei,'I','E') || {I:0.5,E:0.5};
   const nsP = pairProb(ns,'N','S') || {N:0.5,S:0.5};
   const ftP = pairProb(ft,'F','T') || {F:0.5,T:0.5};
@@ -150,42 +155,52 @@ function readMBTIProbs(){
   return {prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset}};
 }
 
-// ---------- Progressive Survey 渲染 ----------
+// ---------- Progressive Survey ----------
 function startProgressiveSurvey(){
   ANSWERS.clear();
   currentIndex = 0;
   const form = $('#surveyForm');
   form.innerHTML = '';
-
-  // 首题
-  renderOneItem(currentIndex);
-
-  // 提交按钮先隐藏
-  $('#submitSurvey').closest('.actions').style.display = 'none';
+  renderOneItem(0);           // 先渲染第 1 题
+  updateSubmitVisibility();   // 先隐藏提交
 }
 
-// 7点小圆控件（中点略大）
-function buildDotScale(name, onPick){
+// 7 点小圆（与样式 .likert-option/.likert-dot 匹配；中点标记 is-center 便于 CSS 放大）
+function buildLikert7(name, defaultVal, onPick){
   const wrap = document.createElement('div');
-  wrap.className = 'dot-scale';
+  wrap.className = 'likert7';
   for(let v=1; v<=7; v++){
-    const id = `${name}-${v}-${Math.random().toString(36).slice(2,6)}`;
     const label = document.createElement('label');
-    label.className = 'dot';
-    if(v===4) label.classList.add('dot-center');
+    label.className = 'likert-option';
+    label.dataset.v = String(v);
+    if(v === 4) label.classList.add('is-center');
+
     const input = document.createElement('input');
     input.type = 'radio';
     input.name = name;
     input.value = String(v);
-    input.id = id;
-    const span = document.createElement('span'); // 可用于视觉的圆
-    label.appendChild(input);
-    label.appendChild(span);
 
-    input.addEventListener('change', ()=>{
-      const raw = parseInt(input.value,10);
-      onPick(raw);
+    const dot = document.createElement('span');
+    dot.className = 'likert-dot';
+
+    label.appendChild(input);
+    label.appendChild(dot);
+
+    if(defaultVal === v){
+      input.checked = true;
+      label.classList.add('is-selected');
+    }
+
+    // 点击即可选择（保留可重复修改）
+    input.addEventListener('click', ()=>{
+      // 视觉：单选组清除选中，再高亮当前
+      [...wrap.querySelectorAll('.likert-option')].forEach(l => l.classList.remove('is-selected','tapped'));
+      label.classList.add('is-selected','tapped');
+      setTimeout(()=>label.classList.remove('tapped'), 160);
+
+      onPick(v, label);
     });
+
     wrap.appendChild(label);
   }
   return wrap;
@@ -194,70 +209,82 @@ function buildDotScale(name, onPick){
 function renderOneItem(idx){
   const form = $('#surveyForm');
   if(idx >= ITEMS.length){
-    // 没题了 → 打开提交
-    $('#submitSurvey').closest('.actions').style.display = 'flex';
+    updateSubmitVisibility(true);     // 全部生成 → 显示提交
     return;
   }
-  const it = ITEMS[idx];
 
+  const it = ITEMS[idx];
   const node = document.createElement('div');
-  node.className = 'item card slide-in';
-  node.setAttribute('data-qid', it.id);
+  node.className = 'item card';
+  node.id = `q-${it.id}`;
 
   node.innerHTML = `
-    <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)}</h3>
-    <div class="scale-hint">
-      <span>非常不同意</span>
-      <span>非常同意</span>
+    <h3 class="q-title" style="margin:0 0 10px;font-size:16px;">Q${idx+1}. ${escapeHTML(it.text)}</h3>
+    <div class="scale-hint" style="display:flex;justify-content:space-between;margin-bottom:6px;color:#666;font-size:12px">
+      <span>非常不同意</span><span>非常同意</span>
     </div>
   `;
-  const scale = buildDotScale('q'+it.id, raw=>{
-    // 锁定本题
+
+  const scale = buildLikert7(`q-${it.id}`, ANSWERS.get(it.id), async (raw)=>{
+    // 记录答案（可覆盖）
     ANSWERS.set(it.id, raw);
-    // 禁用本题单选，避免误触
-    node.querySelectorAll('input[type="radio"]').forEach(r=>r.disabled = true);
-    // 稍作延迟与滑出动画
-    requestAnimationFrame(async ()=>{
-      await sleep(120);
-      currentIndex += 1;
-      renderOneItem(currentIndex);
-      // 强力滚动：优先滚到新题元素中部；若容器不滚，就用 window.scroll
-      const last = form.lastElementChild;
-      if(last){
-        // 先尝试滚动到中央
-        last.scrollIntoView({behavior:'smooth', block:'center'});
-        // 保险：再用 window.scrollBy 助推（考虑头图高度）
+
+    // 若下一题还没渲染，则渲染下一题
+    const nextId = ITEMS[idx+1]?.id;
+    if(nextId && !document.getElementById(`q-${nextId}`)){
+      renderOneItem(idx+1);
+      // 等待一帧再滚动（确保布局完成）
+      await sleep(60);
+      const target = document.getElementById(`q-${nextId}`);
+      if(target){
+        target.scrollIntoView({behavior:'smooth', block:'center'});
+        // 轻微修正，考虑顶部头图
         setTimeout(()=>{
-          const rect = last.getBoundingClientRect();
+          const rect = target.getBoundingClientRect();
           const y = window.scrollY + rect.top - Math.min(120, window.innerHeight*0.15);
-          window.scrollTo({top: y, behavior: 'smooth'});
-  }, 60);
+          window.scrollTo({top: y, behavior:'smooth'});
+        }, 80);
+      }
+    }else{
+      // 已是最后一题 → 显示提交并滚动到按钮附近
+      updateSubmitVisibility();
+      const actions = $('#submitSurvey')?.closest('.actions');
+      if(actions){
+        actions.style.display = 'flex';
+        actions.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+    }
+
+    updateSubmitVisibility();
+  });
+
+  node.appendChild(scale);
+  form.appendChild(node);
 }
 
-    });
-  });
-  node.appendChild(scale);
-
-  // 挂载
-  form.appendChild(node);
+function updateSubmitVisibility(forceShow=false){
+  const actions = $('#submitSurvey')?.closest('.actions');
+  if(!actions) return;
+  if(forceShow || ANSWERS.size >= ITEMS.length){
+    actions.style.display = 'flex';
+  }else{
+    actions.style.display = 'none';
+  }
 }
 
 // ---------- 读取答案 ----------
 function readSurvey(){
-  if(ANSWERS.size < ITEMS.length){
-    return {ok:false};
-  }
-  // 把 map 转成 {id: raw}
+  if(ANSWERS.size < ITEMS.length) return {ok:false};
   const out = {};
   for(const it of ITEMS){
     const raw = ANSWERS.get(it.id);
     if(typeof raw !== 'number') return {ok:false};
-    out[it.id] = raw;
+    out[it.id] = raw; // 1..7
   }
   return {ok:true, answers: out};
 }
 
-// ---------- 计算问卷 6 维（带符号多维加权的加权平均） ----------
+// ---------- 计算问卷 6 维（带符号多维加权） ----------
 function computeSurveyDims(answers){
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
@@ -268,7 +295,6 @@ function computeSurveyDims(answers){
     const score = mapLikertToFive(raw); // 1..5
     const w = (typeof it.w === 'number' ? it.w : 1.0);
 
-    // 对每个维度分别累计（注意：符号只决定“方向”，我们用 abs 进分母以做加权平均）
     [
       ['A',it.A], ['C',it.C], ['D',it.D],
       ['M',it.M], ['S',it.S], ['L',it.L]
@@ -276,12 +302,12 @@ function computeSurveyDims(answers){
       const c = Number(coef)||0;
       if(c === 0) return;
       const weightAbs = Math.abs(w * c);
-      const signed = (c >= 0) ? score : (6 - score); // 等价于反向：1->5, 5->1（因为范围 1..5）
+      const signed = (c >= 0) ? score : (6 - score);  // 反向：1→5, 5→1
       acc[k].num += weightAbs * signed;
       acc[k].den += weightAbs;
     });
   }
-  function avg(x){ return x.den > 0 ? (x.num / x.den) : 3.0; }
+  const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
   return {
     A_s: clip(avg(acc.A)), C_s: clip(avg(acc.C)), D_s: clip(avg(acc.D)),
     M_s: clip(avg(acc.M)), S_s: clip(avg(acc.S)), L_s: clip(avg(acc.L))
@@ -291,15 +317,13 @@ function computeSurveyDims(answers){
 // ---------- MBTI 先验 ----------
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
-  const x = meta.xCount; // 未测已过滤
-  // 基础上限
-  let base = 0.30; // 四轴全定
-  if(x >= 1) base = 0.20;
-  // 确定性稀释
+  const x = meta.xCount;           // 未测已过滤
+  let base = 0.30;                 // 四轴全定
+  if(x >= 1) base = 0.20;          // 含 X
   let cert = 1.0;
-  if(x===1) cert = 0.67;
+  if     (x===1) cert = 0.67;
   else if(x===2) cert = 0.50;
-  else if(x>=3) cert = 0.40;
+  else if(x>=3)  cert = 0.40;
   return base * cert;
 }
 
@@ -321,7 +345,7 @@ function scoreAll(read){
   const dims = computeSurveyDims(read.answers);
 
   let A_final = dims.A_s, C_final = dims.C_s, D_final = dims.D_s;
-  let A_p=null,C_p=null,D_p=null,alpha=0.0;
+  let A_p=null, C_p=null, D_p=null, alpha=0.0;
 
   if(mbti){
     const pri = priorsFromProbs(mbti.prob);
@@ -343,14 +367,14 @@ function scoreAll(read){
     survey_raw: dims
   };
 
-  // —— 宏类型初判（遵循你给的优先级）——
+  // —— 宏类型初判（优先级：去魅 > 建构 > 未触及；可后续回归校正）——
   const tLow = 2.5, tMid = 3.5;
   let macro = null;
 
   if(report.A < tLow){
     macro = (report.C >= 3.5) ? "A1 未触及—高依赖外部建构" : "A0 未触及—低觉察沉浸";
   }else if(report.A >= tMid && report.D >= tMid){
-    if(report.S >= 4.0 /* + 行动量题核验：留给后续 */){
+    if(report.S >= 4.0){
       macro = "C2 去魅—彻底停滞/冻结（候选）";
     }else if(report.C <= 3.0 && report.L <= 3.0){
       macro = "C1 去魅—理想自由人（候选）";
@@ -414,9 +438,3 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   await loadAll();
   init();
 });
-
-// ---------- 小工具 ----------
-function escapeHTML(s){
-  return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-}
-
