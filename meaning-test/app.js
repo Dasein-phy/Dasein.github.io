@@ -1,4 +1,4 @@
-/* ===== 意义姿态测试 app.js — 精修稳定版 ===== */
+/* ===== 意义姿态测试 app.js — 修复版（清冗余/MBTI可选/Likert等距） ===== */
 
 /* ---------- 资源路径 ---------- */
 const cfgPath = './app.config.json';
@@ -74,20 +74,16 @@ function init(){
 
   if(btnStart){
     btnStart.addEventListener('click', ()=>{
-      const intro = $('#intro');
-      const mbti  = $('#mbti');
-      if(intro) intro.classList.add('hidden');
-      if(mbti)  mbti.classList.remove('hidden');
+      $('#intro')?.classList.add('hidden');
+      $('#mbti')?.classList.remove('hidden');
       initMBTIDropdowns(); // 初始化 MBTI 交互
     });
   }
 
   if(btnToSurvey){
     btnToSurvey.addEventListener('click', ()=>{
-      const mbti  = $('#mbti');
-      const survey= $('#survey');
-      if(mbti)  mbti.classList.add('hidden');
-      if(survey) survey.classList.remove('hidden');
+      $('#mbti')?.classList.add('hidden');
+      $('#survey')?.classList.remove('hidden');
       startProgressiveSurvey();
     });
   }
@@ -107,8 +103,8 @@ function init(){
 
 /* ---------- MBTI 交互（四轴侧滑菜单 + 150ms 延时；适配 .mbti-rail / #mbti-none） ---------- */
 function initMBTIDropdowns(){
-  const rail     = document.querySelector('.mbti-rail');   // ← 适配你的 HTML
-  const untested = document.querySelector('#mbti-none');   // ← 适配你的 HTML
+  const rail     = document.querySelector('.mbti-rail');
+  const untested = document.querySelector('#mbti-none');
   if(!rail) return;
 
   const selects = Array.from(rail.querySelectorAll('.mbti-select'));
@@ -117,7 +113,6 @@ function initMBTIDropdowns(){
     let openTimer=null, closeTimer=null;
     const cur  = sel.querySelector('.mbti-current');
     const menu = sel.querySelector('.mbti-menu');
-    const items= Array.from(menu.querySelectorAll('li[data-v]'));
 
     // 悬停 150ms 展开 / 离开 160ms 收起
     sel.addEventListener('mouseenter', ()=>{
@@ -136,19 +131,21 @@ function initMBTIDropdowns(){
     });
 
     // 点击选项：写入 data-value，更新文案与高亮
-    menu.addEventListener('click', e=>{
-      const li = e.target.closest('li[data-v]');
-      if(!li) return;
-      const v = li.getAttribute('data-v') || '';
-      sel.dataset.value = v;                                // ← 不再依赖隐藏 input
-      items.forEach(x=>x.classList.remove('is-active'));
-      li.classList.add('is-active');
-      if(cur) cur.textContent = (v==='' ? '未填' : v);
-      sel.classList.remove('mt-open');
-    });
+    if(menu){
+      menu.addEventListener('click', e=>{
+        const li = e.target.closest('li[data-v]');
+        if(!li) return;
+        const v = li.getAttribute('data-v') || '';
+        sel.dataset.value = v;
+        menu.querySelectorAll('li').forEach(x=>x.classList.remove('is-active'));
+        li.classList.add('is-active');
+        if(cur) cur.textContent = (v==='' ? '未填' : v);
+        sel.classList.remove('mt-open');
+      });
+    }
   });
 
-  // “未测”只禁用四个选择器，不禁用自身
+  // “未测”只禁用四个选择器；取消勾选即可恢复（不把整条 rail 灰掉）
   if(untested){
     untested.addEventListener('change', ()=>{
       const dis = untested.checked;
@@ -196,44 +193,6 @@ function readMBTIProbs(){
   return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
 }
 
-
-  // —— 新结构：隐藏 input —— 
-  const eiNew = $('#mbti-ei'), nsNew = $('#mbti-ns'), ftNew = $('#mbti-ft'), pjNew = $('#mbti-pj');
-  let ei = eiNew ? (eiNew.value||'') : '';
-  let ns = nsNew ? (nsNew.value||'') : '';
-  let ft = ftNew ? (ftNew.value||'') : '';
-  let pj = pjNew ? (pjNew.value||'') : '';
-
-  // —— 旧结构回退：EI 用一组 radio，其余三轴 select —— 
-  if(!eiNew && !nsNew && !ftNew && !pjNew){
-    const eiRadio = $$('input[name="ei"]');
-    const picked  = eiRadio.find(x=>x.checked);
-    ei = picked ? (picked.value||'') : '';
-    ns = ($('#ns')?.value || '');
-    ft = ($('#ft')?.value || '');
-    pj = ($('#pj')?.value || '');
-  }
-
-  if(ei==='' && ns==='' && ft==='' && pj==='') return null;
-
-  function pairProb(v, a, b){
-    if(v==='') return null;
-    if(v==='X') return { [a]:0.5, [b]:0.5 };
-    if(v===a)  return { [a]:1.0, [b]:0.0 };
-    if(v===b)  return { [a]:0.0, [b]:1.0 };
-    return null;
-  }
-  const eiP = pairProb(ei,'I','E') || {I:0.5,E:0.5};
-  const nsP = pairProb(ns,'N','S') || {N:0.5,S:0.5};
-  const ftP = pairProb(ft,'F','T') || {F:0.5,T:0.5};
-  const pjP = pairProb(pj,'P','J') || {P:0.5,J:0.5};
-
-  const xCount = [ei,ns,ft,pj].filter(v=>v==='X').length;
-  const unset  = [ei,ns,ft,pj].filter(v=>v==='').length;
-
-  return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
-}
-
 /* ---------- Progressive 问卷 ---------- */
 function startProgressiveSurvey(){
   ANSWERS.clear();
@@ -263,9 +222,8 @@ function buildLikert7(name, onPick){
     opt.appendChild(input);
     opt.appendChild(dot);
 
-    // 改变选中态（可重复选择，不锁定）
+    // 可重复选择，不锁定
     input.addEventListener('change', ()=>{
-      // 清除旧态
       wrap.querySelectorAll('.likert-option').forEach(k=>k.classList.remove('is-selected','tapped'));
       opt.classList.add('is-selected','tapped');
       setTimeout(()=>opt.classList.remove('tapped'), 130);
@@ -278,19 +236,17 @@ function buildLikert7(name, onPick){
   return wrap;
 }
 
-/** 渲染单题（确保不会重复渲染下一题） */
+/** 渲染单题（防重复渲染/重复下一题） */
 function renderOneItem(idx){
   const form = $('#surveyForm');
   if(!form) return;
 
   if(idx >= ITEMS.length){
-    // 所有题渲染完，显示提交
     const actions = $('#submitSurvey')?.closest('.actions');
     if(actions) actions.style.display = 'flex';
     return;
   }
 
-  // 如果该题 DOM 已存在，则不重复创建
   if(form.querySelector(`[data-q-idx="${idx}"]`)) return;
 
   const it = ITEMS[idx];
@@ -305,18 +261,13 @@ function renderOneItem(idx){
   `;
 
   const scale = buildLikert7('q' + it.id, (raw)=>{
-    // 记录答案
     ANSWERS.set(it.id, raw);
-    // 若未触发下一题，则只触发一次
     if(node.getAttribute('data-next-spawned') !== '1'){
       node.setAttribute('data-next-spawned', '1');
-      // 渲染下一题
       const nextIdx = idx + 1;
       renderOneItem(nextIdx);
-      // 滚动到新出场的题
       const nextEl = form.querySelector(`[data-q-idx="${nextIdx}"]`);
       if(nextEl){
-        // 微延时，等待布局稳定
         setTimeout(()=>{
           nextEl.scrollIntoView({ behavior:'smooth', block:'center' });
         }, 60);
@@ -489,3 +440,4 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   await loadAll();
   init();
 });
+
