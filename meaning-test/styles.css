@@ -216,3 +216,33 @@
   from{ opacity:0; transform: translateY(8px); }
   to  { opacity:1; transform: translateY(0); }
 }
+
+/* 选中态：空心大圆 + #FFD9A3，更显眼 */
+.dot-scale .dot input:checked + span{
+  background: transparent;                 /* 空心 */
+  border: 2px solid #FFD9A3;               /* 主色边框 */
+  transform: scale(1.35);                  /* 略放大 */
+  box-shadow: 0 0 0 6px rgba(255,217,163,.25); /* 柔光外圈 */
+}
+
+/* hover 时保持轻微反馈，但不盖过选中态 */
+.dot-scale .dot:hover span{
+  background: transparent;
+  border-color: #FFD9A3;
+  transform: scale(1.18);
+}
+
+/* 默认小圆样式（未选中） */
+.dot-scale .dot span{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: transparent;
+  border: 2px solid #cfd8d3;
+  transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease, border-color .18s ease;
+  box-shadow: none;
+}
+
+/* 中心点略大（保持视觉锚点） */
+.dot-scale .dot.dot-center span{
+  width: 12px; height: 12px;
+}
+
