@@ -308,3 +308,73 @@
 /* —— 保险：即便你曾给已回答项目加过“锁定”样式，也强制允许再次点击 —— */
 .item [type="radio"]{ pointer-events: auto !important; }
 .item, .item *{ user-select: none; }  /* 防止快速点击误选中标注文字 */
+
+/* === Likert7 均分布局 & 选中样式（对齐 fix） === */
+
+/* 两侧提示文字占满一行并左右对齐 */
+.item .scale-hint{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:#8b8f97;
+  font-size:12px;
+  margin-bottom:6px;
+}
+
+/* 7 个圆点：均分一行，和提示文字天然对齐 */
+.likert7{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr); /* 7 等分 */
+  align-items:center;
+  gap: 0;                /* 不留空隙，保证等距 */
+  width:100%;
+  padding:8px 0 10px;
+}
+
+/* 每个选项有较大热区，但圆点保持小巧 */
+.likert-option{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:40px;       /* 扩大可点范围，仅热区变大 */
+}
+.likert-option input{
+  position:absolute;
+  inset:0;               /* 整块都能点 */
+  opacity:0;
+  cursor:pointer;
+}
+
+/* 圆点 */
+.likert-dot{
+  width:16px;
+  height:16px;
+  border:2px solid #bfc7cf;
+  border-radius:50%;
+  background:transparent;
+  pointer-events:none;   /* 点击落在 label 上 */
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+
+/* 中间的点稍微大一点 */
+.likert-option.is-center .likert-dot{
+  transform: scale(1.18);
+}
+
+/* 轻微 hover 提示，不夸张避免“抖动感大” */
+.likert-option:hover .likert-dot{
+  transform: scale(1.08);
+}
+
+/* 选中态：空心大圆 + 主题色 #FFD9A3 */
+.likert-option.is-selected .likert-dot{
+  border-color: #FFD9A3;
+  box-shadow: 0 0 0 3px rgba(255,217,163,.35);
+}
+
+/* 点击瞬间的“按压”反馈（如果你在 JS 里会加 tapped 类） */
+.likert-option.tapped .likert-dot{
+  transform: scale(1.02);
+}
+
