@@ -221,9 +221,19 @@ function renderOneItem(idx){
       await sleep(120);
       currentIndex += 1;
       renderOneItem(currentIndex);
-      // 滚动到新题
+      // 强力滚动：优先滚到新题元素中部；若容器不滚，就用 window.scroll
       const last = form.lastElementChild;
-      if(last) last.scrollIntoView({behavior:'smooth', block:'end'});
+      if(last){
+        // 先尝试滚动到中央
+        last.scrollIntoView({behavior:'smooth', block:'center'});
+        // 保险：再用 window.scrollBy 助推（考虑头图高度）
+        setTimeout(()=>{
+          const rect = last.getBoundingClientRect();
+          const y = window.scrollY + rect.top - Math.min(120, window.innerHeight*0.15);
+          window.scrollTo({top: y, behavior: 'smooth'});
+  }, 60);
+}
+
     });
   });
   node.appendChild(scale);
