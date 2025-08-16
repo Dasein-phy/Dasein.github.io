@@ -110,11 +110,6 @@
   pointer-events:none;
   transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-/* 打开态（由 JS 加 .mt-open；也兼容 :focus-within） */
-.mt-app .mbti-select.mt-open .mbti-menu,
-.mt-app .mbti-select:focus-within .mbti-menu{
-  opacity:1; transform: translateX(0) scale(1); pointer-events:auto;
-}
 
 .mt-app .mbti-menu li{
   display:inline-block;
@@ -133,8 +128,8 @@
   background: rgba(113,135,113,.08);
 }
 
-/* “未测”禁用 */
-.mt-app .mbti-rail.disabled{ opacity:.5; } /* 不再禁用 pointer-events */
+/* 仅灰/禁用四个选择器，不影响“未测”行 */
+.mt-app .mbti-rail.disabled .mbti-select { opacity:.5; pointer-events:none; }
 
 /* 小屏：菜单向下展开并自适应换行 */
 @media (max-width: 768px){
