@@ -461,13 +461,19 @@ function scoreAll(read){
     }else{
       macro = (report.C <= 2.5) ? "C0 去魅—“解”候选" : "C1/C2 去魅—待细分";
     }
-  }else if(report.A >= 3.0 && report.D <= tMid){
-    if(report.C >= 4.0) macro = "B0 建构—高建构依赖";
-    else if(report.C >= 3.0 && report.L <= 3.0) macro = "B1 建构—局部建构（候选）";
-    else if(report.C < 2.5 && report.M_func >= 3.5) macro = "B3 建构—功能主义姿态（候选）"; // ← 关键改动
-    else macro = "B2 建构—透明虚构（候选）";
-  }else{
-    macro = "B2 建构—透明虚构（候选）";
+    } else if (report.A >= 2.5 && report.A < 3.0) {
+  // —— A 过渡带的细分 —— 
+  if (report.D >= 3.6 && report.C <= 3.0) {
+    macro = "C-seed 去魅萌发（候选）";
+  } else if (report.C >= 3.8 && report.D <= 3.2) {
+    macro = (report.L <= 3.0) ? "B1 建构—局部建构（边界）" : "B0 建构—高建构依赖（边界）";
+  } else {
+    macro = "过渡带—待观察（默认 B2 候选）";
+  }
+} else {
+  macro = "B2 建构—透明虚构（候选）";
+}
+
   }
   report.macro_hint = macro;
 
