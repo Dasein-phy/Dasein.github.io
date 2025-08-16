@@ -322,7 +322,6 @@ function buildLikert7(name, onPick){
   return wrap;
 }
 
-/** 渲染单题（含防重复逻辑） */
 function renderOneItem(idx){
   const form = $('#surveyForm');
   if(!form) return;
@@ -347,8 +346,10 @@ function renderOneItem(idx){
     <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
   `;
 
+  const qKey = `q_${idx}`; // ★ 用“索引键”记录这题的作答
   const scale = buildLikert7('q'+it.id, (raw)=>{
-    ANSWERS.set(it.id, raw);
+    ANSWERS.set(qKey, raw); // ★ 按索引存，不按 id 存
+
     if(node.getAttribute('data-next-spawned') !== '1'){
       node.setAttribute('data-next-spawned', '1');
       const nextIdx = idx + 1;
@@ -363,17 +364,25 @@ function renderOneItem(idx){
   form.appendChild(node);
 }
 
-/** 读取答案（确认全答完） */
 function readSurvey(){
-  if(ANSWERS.size < ITEMS.length) return {ok:false};
-  const out = {};
-  for(const it of ITEMS){
-    const raw = ANSWERS.get(it.id);
-    if(typeof raw !== 'number') return {ok:false};
-    out[it.id] = raw;
+  // 先用“题目总数 vs 已记录条目数”做个快速判断
+  if(ANSWERS.size < ITEMS.length){
+    return { ok:false, reason:`未答数量 ≈ ${ITEMS.length - ANSWERS.size}` };
   }
-  return {ok:true, answers: out};
+
+  // 构建与 ITEMS 对齐的答案数组
+  const arr = new Array(ITEMS.length);
+  for(let i=0; i<ITEMS.length; i++){
+    const key = `q_${i}`;
+    const raw = ANSWERS.get(key);
+    if(typeof raw !== 'number'){
+      return { ok:false, reason:`第 ${i+1} 题无效/缺失` };
+    }
+    arr[i] = raw;
+  }
+  return { ok:true, answers: arr }; // ★ 这里开始，answers 是“按索引”的数组
 }
+
 
 /* =========================================================
    模块 E：计分（带符号多维加权 + M 拆分 + L 的矛盾惩罚）
@@ -381,22 +390,24 @@ function readSurvey(){
    ========================================================= */
 
 /** 1) 基础各维得分（带符号多维加权） */
-function computeSurveyDims(answers){
+function computeSurveyDims(answers){ // answers: number[] 与 ITEMS 对齐
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
     S:{num:0, den:0}, L:{num:0, den:0},
     M_func:{num:0, den:0}, M_aff:{num:0, den:0}
   };
-  for(const it of ITEMS){
-    const raw = answers[it.id];
-    const score = mapLikertToFive(raw);
+
+  for(let i=0; i<ITEMS.length; i++){
+    const it = ITEMS[i];
+    const raw = answers[i];             // ★ 按索引取答
+    const score = mapLikertToFive(raw); // 1..5
     const baseW = (typeof it.w==='number') ? it.w : 1.0;
 
     const accOne = (key, coef)=>{
       const c = Number(coef)||0;
       if(c===0) return;
       const w = Math.abs(baseW * c);
-      const signed = (c >= 0) ? score : (6 - score); // 反向映射
+      const signed = (c >= 0) ? score : (6 - score);
       acc[key].num += w * signed;
       acc[key].den += w;
     };
@@ -413,8 +424,6 @@ function computeSurveyDims(answers){
   const avg = x => x.den > 0 ? (x.num/x.den) : 3.0;
   const m_func = clip(avg(acc.M_func));
   const m_aff  = clip(avg(acc.M_aff));
-
-  // 展示用 M（不丢细节：在最终报告里同时输出子维）
   const M_s = Math.max(m_func, m_aff);
 
   return {
@@ -428,13 +437,13 @@ function computeSurveyDims(answers){
   };
 }
 
-/** 2) 自相矛盾指数（A/C/D 的正反并存）→ 注入 L 的惩罚 */
-function computeAmbivalenceFromAnswers(answers){
+function computeAmbivalenceFromAnswers(answers){ // answers: number[]
   const dims = ['A','C','D'];
   const agg = {}; dims.forEach(k=> agg[k] = {pos:{num:0,den:0}, neg:{num:0,den:0}} );
 
-  for(const it of ITEMS){
-    const raw = answers[it.id];
+  for(let i=0; i<ITEMS.length; i++){
+    const it = ITEMS[i];
+    const raw = answers[i];                         // ★ 按索引取答
     const score = mapLikertToFive(raw);
     const w = (typeof it.w==='number' ? it.w : 1.0);
 
@@ -458,9 +467,9 @@ function computeAmbivalenceFromAnswers(answers){
   dims.forEach(k=>{
     const pos = agg[k].pos.den>0 ? (agg[k].pos.num/agg[k].pos.den) : 3.0;
     const neg = agg[k].neg.den>0 ? (agg[k].neg.num/agg[k].neg.den) : 3.0;
-    const posHi = Math.max(0, pos - 3) / 2; // 把 >3 的同意强度映射到 [0,1]
+    const posHi = Math.max(0, pos - 3) / 2;
     const negHi = Math.max(0, neg - 3) / 2;
-    const amb   = Math.min(posHi, negHi);   // 两端同时高才算矛盾
+    const amb   = Math.min(posHi, negHi);
     res[k] = {pos:+pos.toFixed(2), neg:+neg.toFixed(2), amb:+amb.toFixed(3)};
     list.push(amb);
   });
@@ -468,6 +477,7 @@ function computeAmbivalenceFromAnswers(answers){
   const ci = list.length ? (list.reduce((a,b)=>a+b,0)/list.length) : 0;
   return { byDim: res, ci: +ci.toFixed(3) };
 }
+
 
 /** 3) MBTI 先验与融合（A/C/D 三个维度） */
 function alphaFromMBTI(meta){
