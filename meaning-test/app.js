@@ -1,4 +1,26 @@
-/* ===== 意义姿态测试 app.js — 修复版（清冗余/MBTI可选/Likert等距） ===== */
+/* ===== 意义姿态测试 app.js — v3（修复“总是3分” & 正确读取v2题库权重） =====
+ *
+ * 这份文件可直接替换你当前的 app.js。
+ * 主要修复点：
+ * 1) 正确解析 items.baseline.v2.json / items.baseline.json 中的 weights 结构
+ *    （例如 {A: +1, C: -0.6, ..., M_aff: +0.8, M_func: -0.4}）。
+ * 2) 计分采用“带符号多维加权”，并分别计算 M_func 与 M_aff 两个子分数。
+ * 3) 宏类型判读中，功能主义姿态（B3）改用 M_func_s 作为触发条件。
+ *
+ * 结构导航：
+ * - 资源路径常量
+ * - 全局状态（CFG / MBTI / ITEMS / ANSWERS 等）
+ * - 小工具函数（mapLikertToFive / clip / sleep / escapeHTML）
+ * - 加载模块 loadAll()  ←★ 修复点（解析 weights）
+ * - 初始化入口 init()   ← 绑定按钮，进入 MBTI / 问卷
+ * - MBTI 交互 initMBTIDropdowns() / readMBTIProbs()
+ * - Progressive 问卷：startProgressiveSurvey() / buildLikert7() / renderOneItem() / readSurvey()
+ * - 计分：computeSurveyDims()   ←★ 修复点（累计 A/C/D/S/L + M_func/M_aff）
+ * - 先验与融合：alphaFromMBTI() / priorsFromProbs() / scoreAll()
+ * - 报告渲染 renderReport()
+ * - 下载 downloadJSON()
+ * - 启动 DOMContentLoaded
+ */
 
 /* ---------- 资源路径 ---------- */
 const cfgPath = './app.config.json';
@@ -9,7 +31,13 @@ const itemsPathV1 = './items.baseline.json';
 /* ---------- 全局状态 ---------- */
 let CFG = null;
 let MBTI = null;
-/** 统一题库：{id, text, w, A,C,D,M,S,L} */
+/** 统一题库项：
+ * {
+ *   id, text, w(题目整体权重，默认1.0),
+ *   A,C,D,S,L (数值系数，可正可负),
+ *   M_func, M_aff (动因子维度)
+ * }
+ */
 let ITEMS = [];
 /** 答案：Map<id, raw(1..7)> */
 const ANSWERS = new Map();
@@ -28,13 +56,34 @@ function escapeHTML(s){
   return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 }
 
-/* ---------- 加载 ---------- */
+/* ---------- 加载：读取配置 + 题库（★修复“权重未解析”） ----------
+ * 题库 v2/v1 均使用：{ id, text, w?, weights:{A,C,D,S,L,M_func,M_aff} }
+ * 过去版本错误地读取了 n.A / n.C… 导致全为 0；这会使分母=0 → 默认3分。
+ * 这里统一按 weights 表驱动生成内部 ITEMS 结构。
+ */
 async function tryFetchJSON(path){
   try{
     const r = await fetch(path);
     if(!r.ok) throw new Error(path + ' not ok');
     return await r.json();
   }catch(e){ return null; }
+}
+
+function normalizeItem(node){
+  const weights = node.weights || {};
+  return {
+    id   : node.id,
+    text : node.text || node.stem || ('Q' + node.id),
+    w    : (typeof node.w === 'number' ? node.w : 1.0),
+    A    : +weights.A    || 0,
+    C    : +weights.C    || 0,
+    D    : +weights.D    || 0,
+    S    : +weights.S    || 0,
+    L    : +weights.L    || 0,
+    // 动因：分别处理功能/情感两个子维度；若只有 M 则可在此兼容性映射
+    M_func: +weights.M_func || 0,
+    M_aff : +weights.M_aff  || 0,
+  };
 }
 
 async function loadAll(){
@@ -44,27 +93,18 @@ async function loadAll(){
   ]);
   CFG = cfg; MBTI = prior;
 
-  let v2 = await tryFetchJSON(itemsPathV2);
-  if (Array.isArray(v2) && v2.length){
-    ITEMS = v2.map(n => ({
-      id: n.id,
-      text: n.text || n.stem || ('Q' + n.id),
-      w:   (typeof n.w === 'number' ? n.w : 1.0),
-      A: n.A||0, C: n.C||0, D: n.D||0, M: n.M||0, S: n.S||0, L: n.L||0
-    }));
-  }else{
-    const v1 = await tryFetchJSON(itemsPathV1);
-    if(!Array.isArray(v1) || !v1.length) throw new Error('题库加载失败');
-    ITEMS = v1.map(n => ({
-      id: n.id,
-      text: n.text || n.stem || ('Q' + n.id),
-      w: (typeof n.weight === 'number' ? n.weight : 1.0),
-      A: 0, C: 0, D: 0, M: 0, S: 0, L: 0
-    }));
+  let raw = await tryFetchJSON(itemsPathV2);
+  if(!Array.isArray(raw) || !raw.length){
+    raw = await tryFetchJSON(itemsPathV1);
   }
+  if(!Array.isArray(raw) || !raw.length){
+    throw new Error('题库加载失败：v2 与 v1 均不可用');
+  }
+
+  ITEMS = raw.map(normalizeItem);
 }
 
-/* ---------- 初始化入口 ---------- */
+/* ---------- 初始化入口：绑定按钮/切换卡片 ---------- */
 function init(){
   const btnStart   = $('#startBtn');
   const btnToSurvey= $('#toSurvey');
@@ -101,7 +141,15 @@ function init(){
   if(btnRestart)  btnRestart.addEventListener('click', ()=>location.reload());
 }
 
-/* ---------- MBTI 交互（四轴侧滑菜单 + 150ms 延时；适配 .mbti-rail / #mbti-none） ---------- */
+/* ---------- MBTI 交互（四轴卡片式：点击/悬停展开 + 150ms 延迟） ----------
+ * HTML 结构（见 index.html）：
+ * .mbti-rail > .mbti-item[data-axis]
+ *   > .axis
+ *   > .mbti-select[data-target="ei/ns/ft/pj"][data-value=""]
+ *       .mbti-current(按钮)
+ *       ul.mbti-menu > li[data-v] （'' / 轴两端字母 / 'X'）
+ * 未测复选框：#mbti-none
+ */
 function initMBTIDropdowns(){
   const rail     = document.querySelector('.mbti-rail');
   const untested = document.querySelector('#mbti-none');
@@ -145,7 +193,7 @@ function initMBTIDropdowns(){
     }
   });
 
-  // “未测”只禁用四个选择器；取消勾选即可恢复（不把整条 rail 灰掉）
+  // “未测”只禁用四个选择器；取消勾选即可恢复
   if(untested){
     untested.addEventListener('change', ()=>{
       const dis = untested.checked;
@@ -154,7 +202,7 @@ function initMBTIDropdowns(){
         if(dis){
           sel.dataset.value = '';
           const cur = sel.querySelector('.mbti-current');
-          cur && (cur.textContent='未填');
+          if(cur) cur.textContent = '未填';
           sel.querySelectorAll('.mbti-menu li').forEach(x=>x.classList.remove('is-active'));
         }
       });
@@ -193,7 +241,7 @@ function readMBTIProbs(){
   return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
 }
 
-/* ---------- Progressive 问卷 ---------- */
+/* ---------- Progressive 问卷：逐题出现 ---------- */
 function startProgressiveSurvey(){
   ANSWERS.clear();
   currentIndex = 0;
@@ -213,12 +261,15 @@ function buildLikert7(name, onPick){
   for(let v=1; v<=7; v++){
     const opt = document.createElement('label');
     opt.className = 'likert-option' + (v===4 ? ' is-center':'');
+
     const input = document.createElement('input');
     input.type = 'radio';
     input.name = name;
     input.value = String(v);
+
     const dot = document.createElement('span');
     dot.className = 'likert-dot';
+
     opt.appendChild(input);
     opt.appendChild(dot);
 
@@ -236,7 +287,7 @@ function buildLikert7(name, onPick){
   return wrap;
 }
 
-/** 渲染单题（防重复渲染/重复下一题） */
+/** 渲染单题（防重复渲染/防重复下一题） */
 function renderOneItem(idx){
   const form = $('#surveyForm');
   if(!form) return;
@@ -268,9 +319,7 @@ function renderOneItem(idx){
       renderOneItem(nextIdx);
       const nextEl = form.querySelector(`[data-q-idx="${nextIdx}"]`);
       if(nextEl){
-        setTimeout(()=>{
-          nextEl.scrollIntoView({ behavior:'smooth', block:'center' });
-        }, 60);
+        setTimeout(()=>{ nextEl.scrollIntoView({ behavior:'smooth', block:'center' }); }, 60);
       }
     }
   });
@@ -290,31 +339,50 @@ function readSurvey(){
   return {ok:true, answers: out};
 }
 
-/* ---------- 计分：带符号多维加权 ---------- */
+/* ---------- 计分：带符号多维加权（★含 M_func / M_aff） ----------
+ * 对每道题的 1..7 原始值，先转 1..5；对每个维度单独累计：
+ *   - 若该题在该维度的系数 c>0 → 直接用 score
+ *   - 若 c<0 → 反向（6 - score），等价于 1↔5 翻转
+ *   - 权重采用 |w * c| 进入分子分母，得到该维的加权平均
+ * 输出：
+ *   { A_s, C_s, D_s, S_s, L_s, M_func_s, M_aff_s }
+ */
 function computeSurveyDims(answers){
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
-    M:{num:0, den:0}, S:{num:0, den:0}, L:{num:0, den:0}
+    S:{num:0, den:0}, L:{num:0, den:0},
+    M_func:{num:0, den:0}, M_aff:{num:0, den:0}
   };
+
   for(const it of ITEMS){
     const raw = answers[it.id];
     const score = mapLikertToFive(raw); // 1..5
     const w = (typeof it.w === 'number') ? it.w : 1.0;
 
-    [['A',it.A],['C',it.C],['D',it.D],['M',it.M],['S',it.S],['L',it.L]]
-    .forEach(([k,coef])=>{
+    [
+      ['A', it.A], ['C', it.C], ['D', it.D],
+      ['S', it.S], ['L', it.L],
+      ['M_func', it.M_func], ['M_aff', it.M_aff]
+    ].forEach(([k,coef])=>{
       const c = Number(coef)||0;
       if(c===0) return;
       const weightAbs = Math.abs(w * c);
-      const signed    = (c >= 0) ? score : (6 - score); // 反向：1->5, 5->1
+      const signed = (c >= 0) ? score : (6 - score);
       acc[k].num += weightAbs * signed;
       acc[k].den += weightAbs;
     });
   }
+
   const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
+
   return {
-    A_s: clip(avg(acc.A)), C_s: clip(avg(acc.C)), D_s: clip(avg(acc.D)),
-    M_s: clip(avg(acc.M)), S_s: clip(avg(acc.S)), L_s: clip(avg(acc.L))
+    A_s: clip(avg(acc.A)),
+    C_s: clip(avg(acc.C)),
+    D_s: clip(avg(acc.D)),
+    S_s: clip(avg(acc.S)),
+    L_s: clip(avg(acc.L)),
+    M_func_s: clip(avg(acc.M_func)),
+    M_aff_s : clip(avg(acc.M_aff))
   };
 }
 
@@ -342,6 +410,10 @@ function priorsFromProbs(p){
 
 function fuse(prior, survey, alpha){ return alpha*prior + (1-alpha)*survey; }
 
+/* ---------- 总分与宏类型判读 ----------
+ * - 动因 M 的展示：我们取 M = max(M_func_s, M_aff_s) 作为显示用强度；
+ * - 但功能主义姿态（B3）的规则用 M_func_s（功能驱动强）触发。
+ */
 function scoreAll(read){
   const mbti = readMBTIProbs();
   const dims = computeSurveyDims(read.answers);
@@ -357,18 +429,25 @@ function scoreAll(read){
     D_final = fuse(D_p, dims.D_s, alpha);
   }
 
+  // 展示用动因强度：取两者较大者；同时保留子分给判读
+  const M_func = dims.M_func_s;
+  const M_aff  = dims.M_aff_s;
+  const M_show = Math.max(M_func, M_aff);
+
   const report = {
     A: +A_final.toFixed(2),
     C: +C_final.toFixed(2),
     D: +D_final.toFixed(2),
-    M: +dims.M_s.toFixed(2),
+    M: +M_show.toFixed(2),         // 展示用
+    M_func: +M_func.toFixed(2),    // 供逻辑判读
+    M_aff : +M_aff.toFixed(2),     // 供逻辑判读
     S: +dims.S_s.toFixed(2),
     L: +dims.L_s.toFixed(2),
     prior: mbti ? {A_p, C_p, D_p, alpha:+alpha.toFixed(3)} : null,
     survey_raw: dims
   };
 
-  // 宏类型粗判（与你之前规则一致）
+  // 宏类型粗判（与你之前规则一致，B3 用 M_func）
   const tLow = 2.5, tMid = 3.5;
   let macro = null;
 
@@ -385,7 +464,7 @@ function scoreAll(read){
   }else if(report.A >= 3.0 && report.D <= tMid){
     if(report.C >= 4.0) macro = "B0 建构—高建构依赖";
     else if(report.C >= 3.0 && report.L <= 3.0) macro = "B1 建构—局部建构（候选）";
-    else if(report.C < 2.5 && report.M >= 3.5) macro = "B3 建构—功能主义姿态（候选）";
+    else if(report.C < 2.5 && report.M_func >= 3.5) macro = "B3 建构—功能主义姿态（候选）"; // ← 关键改动
     else macro = "B2 建构—透明虚构（候选）";
   }else{
     macro = "B2 建构—透明虚构（候选）";
@@ -406,7 +485,7 @@ function renderReport(res){
     <li>觉察 A：${res.A}</li>
     <li>建构依赖 C：${res.C}</li>
     <li>去魅 D：${res.D}</li>
-    <li>动因模式 M：${res.M}</li>
+    <li>动因模式 M：${res.M} <span style="color:#888">(功能 ${res.M_func} / 情感 ${res.M_aff})</span></li>
     <li>姿态稳定 S：${res.S}</li>
     <li>领域一致 L：${res.L}</li>
   </ul>`);
@@ -437,7 +516,7 @@ function downloadJSON(){
 
 /* ---------- 启动 ---------- */
 window.addEventListener('DOMContentLoaded', async ()=>{
-  await loadAll();
+  await loadAll(); // ← 现在会正确解析 weights，从而不再是“全 3 分”
   init();
 });
 
