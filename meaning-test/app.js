@@ -105,89 +105,97 @@ function init(){
   if(btnRestart)  btnRestart.addEventListener('click', ()=>location.reload());
 }
 
-/* ---------- MBTI 交互（四轴侧滑菜单 + 150ms 延时） ---------- */
-/** 只对 .mbti-select 加/解禁；不触碰 .mbti-rail 本身，避免 pointer-events:none */
+/* ---------- MBTI 交互（四轴侧滑菜单 + 150ms 延时；适配 .mbti-rail / #mbti-none） ---------- */
 function initMBTIDropdowns(){
-  const rail      = $('#mbti-axes');          // 容器
-  const untested  = $('#mbti-untested');      // “未测”复选框
-  const selects   = $$('.mbti-select', rail); // 四个选择器
-  const currents  = $$('.mbti-current', rail);
+  const rail     = document.querySelector('.mbti-rail');   // ← 适配你的 HTML
+  const untested = document.querySelector('#mbti-none');   // ← 适配你的 HTML
+  if(!rail) return;
 
-  // 保护：如果页面还没切到新结构，直接返回
-  if(!rail || !selects.length){
-    // 兼容旧表单也允许
-    return;
-  }
+  const selects = Array.from(rail.querySelectorAll('.mbti-select'));
 
-  // —— 悬停延时：每个 select 各自管理定时器 ——
   selects.forEach(sel=>{
-    sel.__openTimer = null;
-    sel.__closeTimer = null;
+    let openTimer=null, closeTimer=null;
+    const cur  = sel.querySelector('.mbti-current');
+    const menu = sel.querySelector('.mbti-menu');
+    const items= Array.from(menu.querySelectorAll('li[data-v]'));
 
+    // 悬停 150ms 展开 / 离开 160ms 收起
     sel.addEventListener('mouseenter', ()=>{
-      clearTimeout(sel.__closeTimer);
-      sel.__openTimer = setTimeout(()=> sel.classList.add('mt-open'), 150);
+      clearTimeout(closeTimer);
+      openTimer = setTimeout(()=> sel.classList.add('mt-open'), 150);
     });
     sel.addEventListener('mouseleave', ()=>{
-      clearTimeout(sel.__openTimer);
-      sel.__closeTimer = setTimeout(()=> sel.classList.remove('mt-open'), 160);
+      clearTimeout(openTimer);
+      closeTimer = setTimeout(()=> sel.classList.remove('mt-open'), 160);
     });
 
-    // 点击当前框也可立即展开
-    const cur = $('.mbti-current', sel);
-    if(cur){
-      cur.addEventListener('click', ()=>{
-        clearTimeout(sel.__closeTimer);
-        sel.classList.add('mt-open');
-      });
-    }
+    // 点击当前框立即展开
+    cur && cur.addEventListener('click', ()=>{
+      clearTimeout(closeTimer);
+      sel.classList.add('mt-open');
+    });
 
-    // 点击选项：写值 + 文案 + 选中态
-    const menu = $('.mbti-menu', sel);
-    const target = sel.getAttribute('data-target'); // ei/ns/ft/pj
-    const hidden = target ? $('#mbti-' + target) : null;
-
-    if(menu){
-      menu.addEventListener('click', (e)=>{
-        const li = e.target.closest('li[data-v]');
-        if(!li) return;
-        const val = li.getAttribute('data-v'); // '', 'E','I','X'...
-        // 写隐藏 input
-        if(hidden) hidden.value = val;
-        // 文案
-        if(cur) cur.textContent = (val==='' ? '未填' : val);
-        // 激活样式
-        $$('.mbti-menu li', sel).forEach(x=>x.classList.remove('is-active'));
-        li.classList.add('is-active');
-        // 关闭菜单（保持干净）
-        sel.classList.remove('mt-open');
-      });
-    }
+    // 点击选项：写入 data-value，更新文案与高亮
+    menu.addEventListener('click', e=>{
+      const li = e.target.closest('li[data-v]');
+      if(!li) return;
+      const v = li.getAttribute('data-v') || '';
+      sel.dataset.value = v;                                // ← 不再依赖隐藏 input
+      items.forEach(x=>x.classList.remove('is-active'));
+      li.classList.add('is-active');
+      if(cur) cur.textContent = (v==='' ? '未填' : v);
+      sel.classList.remove('mt-open');
+    });
   });
 
-  // —— “未测”开关：只禁用四个选择器，不改变 rail 的 pointer-events —— 
+  // “未测”只禁用四个选择器，不禁用自身
   if(untested){
     untested.addEventListener('change', ()=>{
-      const checked = untested.checked;
+      const dis = untested.checked;
       selects.forEach(sel=>{
-        sel.classList.toggle('is-disabled', checked);
-        // 同时清空隐藏值与文案
-        const target = sel.getAttribute('data-target');
-        const hidden = target ? $('#mbti-' + target) : null;
-        const cur    = $('.mbti-current', sel);
-        if(checked){
-          if(hidden) hidden.value = '';
-          if(cur) cur.textContent = '未填';
+        sel.classList.toggle('is-disabled', dis);
+        if(dis){
+          sel.dataset.value = '';
+          const cur = sel.querySelector('.mbti-current');
+          cur && (cur.textContent='未填');
+          sel.querySelectorAll('.mbti-menu li').forEach(x=>x.classList.remove('is-active'));
         }
       });
     });
   }
 }
 
-/** 读取 MBTI 概率（新/旧结构均兼容；未测 → 返回 null） */
+/** 读取 MBTI 概率（从 .mbti-select 的 data-value 读取；未测→null） */
 function readMBTIProbs(){
-  const untested = $('#mbti-untested');
+  const untested = document.querySelector('#mbti-none');
   if(untested && untested.checked) return null;
+
+  const get = axis => {
+    const el = document.querySelector(`.mbti-select[data-target="${axis}"]`);
+    return el ? (el.dataset.value || '') : '';
+  };
+  const ei = get('ei'), ns = get('ns'), ft = get('ft'), pj = get('pj');
+
+  if(ei==='' && ns==='' && ft==='' && pj==='') return null;
+
+  const pair = (v,a,b)=>{
+    if(v==='') return null;
+    if(v==='X') return {[a]:0.5,[b]:0.5};
+    if(v===a)  return {[a]:1.0,[b]:0.0};
+    if(v===b)  return {[a]:0.0,[b]:1.0};
+    return null;
+  };
+  const eiP = pair(ei,'I','E') || {I:0.5,E:0.5};
+  const nsP = pair(ns,'N','S') || {N:0.5,S:0.5};
+  const ftP = pair(ft,'F','T') || {F:0.5,T:0.5};
+  const pjP = pair(pj,'P','J') || {P:0.5,J:0.5};
+
+  const xCount = [ei,ns,ft,pj].filter(v=>v==='X').length;
+  const unset  = [ei,ns,ft,pj].filter(v=>v==='').length;
+
+  return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
+}
+
 
   // —— 新结构：隐藏 input —— 
   const eiNew = $('#mbti-ei'), nsNew = $('#mbti-ns'), ftNew = $('#mbti-ft'), pjNew = $('#mbti-pj');
