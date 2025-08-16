@@ -1,20 +1,16 @@
 /* ===== 意义姿态测试样式（scoped 到 .mt-app） ===== */
 
 /* ---------- 主题色（方便全站后续复用） ---------- */
-:root{
-  --mt-fg:#1a1a1a;
-  --mt-muted:#666;
-  --mt-brand:#718771;    /* 绿 */
-  --mt-accent:#FFD9A3;   /* 橙米 */
-  --mt-success:#73AE52;  /* 次绿 */
 
-  /* 兼容老变量名 */
-  --brand:#718771;
-  --accent:#FFD9A3;
-  --success:#73AE52;
-
-  --mt-radius:16px;
-}
+ :root{
+   --mt-fg:#1a1a1a;
+   --mt-muted:#666;
+   --mt-brand:#718771;   /* 主品牌绿 */
+   --mt-accent:#FFD9A3;  /* 强调色 */
++  --mt-secondary:#73AE52; /* 次强调绿（备用） */
+   --mt-radius:16px;
+ }
+.mt-app .mbti-menu li.is-active{ border-color: var(--mt-secondary); }
 
 /* ---------- 基础 ---------- */
 .mt-app *{ box-sizing:border-box; }
@@ -138,7 +134,7 @@
 }
 
 /* “未测”禁用 */
-.mt-app .mbti-rail.disabled{ opacity:.5; pointer-events:none; }
+.mt-app .mbti-rail.disabled{ opacity:.5; } /* 不再禁用 pointer-events */
 
 /* 小屏：菜单向下展开并自适应换行 */
 @media (max-width: 768px){
