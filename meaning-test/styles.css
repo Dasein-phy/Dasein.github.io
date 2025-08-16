@@ -151,19 +151,14 @@
   }
 }
 
-/* =========================================================
-   Likert 7 小圆：等距铺满 + 大热区 + 选中色 #FFD9A3（空心）
-   （与 app.js 的 .likert7 / .likert-option / .likert-dot 配套）
-   ========================================================= */
-
 /* 两侧提示文字 */
 .item .scale-hint{
   display:flex; justify-content:space-between; align-items:center;
   color:#8b8f97; font-size:12px; margin-bottom:6px;
 }
 
-/* 容器按 7 等分铺满 */
-.likert7{
+/* 7 等分铺满一行 */
+.mt-app .likert7{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   align-items:center;
@@ -171,40 +166,39 @@
   padding:8px 0 10px;
 }
 
-/* 每一格是大热区（不改变小圆视觉大小） */
-.likert-option{
+/* 每格变大热区（圆点不变大） */
+.mt-app .likert-option{
   position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  min-height:40px; /* 扩大可点范围 */
+  display:flex; align-items:center; justify-content:center;
+  width:100%;
+  min-height:44px;
 }
-.likert-option input{
+.mt-app .likert-option input{
   position:absolute; inset:0; opacity:0; cursor:pointer;
 }
 
-/* 可见的小圆点 */
-.likert-dot{
+/* 圆点：默认空心小圆 */
+.mt-app .likert-dot{
   width:16px; height:16px;
-  border:2px solid #bfc7cf;
-  border-radius:50%;
-  background:transparent;  /* 默认空心 */
+  border:2px solid #bfc7cf; border-radius:50%;
+  background:transparent !important;
   pointer-events:none;
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
 
-/* 中心点略大作锚点 */
-.likert-option.is-center .likert-dot{ transform: scale(1.16); }
+/* 中心点稍大 */
+.mt-app .likert-option.is-center .likert-dot{ transform: scale(1.16); }
 
-/* 悬停轻微放大（避免抖动感） */
-.likert-option:hover .likert-dot{ transform: scale(1.08); }
+/* 悬停轻微放大 */
+.mt-app .likert-option:hover .likert-dot{ transform: scale(1.08); }
 
-/* 选中：空心 + #FFD9A3 外圈柔光 */
-.likert-option.is-selected .likert-dot{
-  border-color: var(--mt-accent);
-  background: transparent;                           /* 保持空心 */
-  box-shadow: 0 0 0 3px rgba(255,217,163,.35);
+/* 选中：空心 + #FFD9A3 外圈柔光（强优先级避免被旧规则覆盖） */
+.mt-app .likert-option.is-selected .likert-dot{
+  background: transparent !important;
+  border-color: #FFD9A3 !important;
+  box-shadow: 0 0 0 4px rgba(255,217,163,.35) !important;
 }
+
 
 /* 题目出现动画 */
 .item.slide-in{ animation: slideInUp .28s ease both; }
