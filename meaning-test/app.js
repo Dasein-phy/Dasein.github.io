@@ -1,26 +1,26 @@
-/* meaning-test/app.js — 精修版（渐进出题 + 带符号多维加权 + 兼容MBTI两种输入）
-   颜色变量自动注入：--mt-brand #718771, --mt-accent #FFD9A3, --mt-success #73AE52
+/* meaning-test/app.js — 精修：四下拉MBTI + 渐进出题 + 带符号多维加权
+   主题色自动注入：--mt-brand #718771, --mt-accent #FFD9A3, --mt-success #73AE52
 */
 
 // ---------- 路径 ----------
 const cfgPath = './app.config.json';
 const mbtiPriorPath = './mbti.prior.config.json';
-const itemsPathV2 = './items.baseline.v2.json';   // 推荐：带权重/符号
-const itemsPathV1 = './items.baseline.json';      // 兼容：老版
+const itemsPathV2 = './items.baseline.v2.json';  // 新版题库（推荐）
+const itemsPathV1 = './items.baseline.json';     // 兼容旧版
 
 // ---------- 全局状态 ----------
 let CFG = null;
 let MBTI = null;
-let ITEMS = [];              // {id, text, w, A,C,D,M,S,L}
-let ANSWERS = new Map();     // id -> raw(1..7)
-let revealedUntil = -1;      // 已经渲染到的最后索引
-let currentIndex = 0;        // 首次渲染用（按需推进）
+let ITEMS = [];                 // {id, text, w, A,C,D,M,S,L}
+let ANSWERS = new Map();        // id -> raw(1..7)
+let revealedUntil = -1;         // 已渲染到的索引
+let currentIndex = 0;
 
-// ---------- DOM 快捷 ----------
-const $  = sel => document.querySelector(sel);
-const $$ = sel => document.querySelectorAll(sel);
+// ---------- DOM 工具 ----------
+const $  = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 
-// ---------- 工具 ----------
+// ---------- 通用工具 ----------
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const clip  = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
 const mapLikertToFive = raw => 1 + (raw - 1) * (4/6);
@@ -32,18 +32,17 @@ async function tryFetchJSON(path){
   catch{ return null; }
 }
 
-// ---------- 颜色变量：三色注入（站点需要时也能复用） ----------
+// ---------- 注入三色变量 ----------
 function injectThemeColors(){
   const root = document.documentElement;
-  const pairs = [
+  [
     ['--mt-brand',   '#718771'],
     ['--mt-accent',  '#FFD9A3'],
     ['--mt-success', '#73AE52'],
-    // 兼容你旧文件中的变量名（如有）
+    // 兼容你旧变量名（若其他处用到）
     ['--brand',      '#718771'],
     ['--accent',     '#FFD9A3']
-  ];
-  pairs.forEach(([k,v])=> root.style.setProperty(k, v));
+  ].forEach(([k,v])=> root.style.setProperty(k, v));
 }
 
 // ---------- 加载 ----------
@@ -54,7 +53,6 @@ async function loadAll(){
   ]);
   CFG = cfg; MBTI = prior;
 
-  // v2 优先；失败则兼容 v1
   let v2 = await tryFetchJSON(itemsPathV2);
   if(v2 && Array.isArray(v2) && v2.length){
     ITEMS = v2.map(n => ({
@@ -83,7 +81,7 @@ function init(){
   $('#startBtn')?.addEventListener('click', ()=>{
     $('#intro')?.classList.add('hidden');
     $('#mbti')?.classList.remove('hidden');
-    initMBTIUX();
+    initMBTIDropdowns();
   });
 
   // MBTI → Survey
@@ -101,49 +99,100 @@ function init(){
     renderReport(result);
   });
 
-  // 下载 & 重新开始
+  // 下载/重启
   $('#download')?.addEventListener('click', downloadJSON);
   $('#restart')?.addEventListener('click', ()=>location.reload());
 }
 
-// ---------- MBTI（四下拉 / 旧版单选 + 三下拉 双兼容） ----------
-function initMBTIUX(){
-  const untested = $('#mbti-untested');          // “我没有做过 MBTI 测试”
-  const axisWrap = $('#mbti-axes') || document;
-  const selects  = axisWrap.querySelectorAll('select');
-  const eiRadios = document.querySelectorAll('input[name="ei"]');
+// ---------- MBTI：仅四个“右展开下拉” ----------
+function initMBTIDropdowns(){
+  const rail     = $('#mbti-axes');                 // 容器：.mbti-rail
+  const untested = $('#mbti-untested');             // 复选框：未测
 
-  // 初始：未勾选则允许交互
-  if (untested && !untested.checked){
-    selects.forEach(s=> s.disabled = false);
-    eiRadios.forEach(r=> r.disabled = false);
-  }
+  if(!rail) return;
 
-  // 切换“未测” → 统一禁用/启用四轴输入
-  if (untested){
+  // 为每个 .mbti-select 装配交互和“隐藏值”
+  const selects = rail.querySelectorAll('.mbti-select');
+  selects.forEach(sel => setupOneDropdown(sel));
+
+  // 点击空白处：收起所有
+  document.addEventListener('click', (e)=>{
+    if(!rail.contains(e.target)){
+      selects.forEach(s=> s.classList.remove('mt-open'));
+    }
+  });
+
+  // “未测”勾选：清空并灰化
+  if(untested){
     untested.addEventListener('change', ()=>{
-      const dis = untested.checked;
-      selects.forEach(s=> { s.disabled = dis; if(dis) s.value=''; });
-      eiRadios.forEach(r=> { r.disabled = dis; if(dis) r.checked = false; });
+      const disable = untested.checked;
+      rail.classList.toggle('disabled', disable);
+      selects.forEach(sel=>{
+        const hidden = sel.querySelector('input[type="hidden"]');
+        const current= sel.querySelector('.mbti-current');
+        if(disable){
+          if(hidden) hidden.value = '';
+          if(current) current.textContent = '未填';
+          sel.classList.remove('mt-open');
+        }
+      });
     });
   }
 }
 
-function readMBTIProbs(){
-  const untested = $('#mbti-untested');
-  if (untested && untested.checked) return null;
+// 装配一个下拉（结构：.mbti-select[data-axis] > .mbti-current + .mbti-menu li[data-v]）
+function setupOneDropdown(sel){
+  const axis    = sel.getAttribute('data-axis'); // ei/ns/ft/pj
+  const current = sel.querySelector('.mbti-current');
+  const menu    = sel.querySelector('.mbti-menu');
+  if(!axis || !current || !menu) return;
 
-  const getVal = id => { const el = document.querySelector(id); return el ? (el.value || '') : ''; };
-  // 新版优先：四个下拉
-  let ei = getVal('#mbti-ei'), ns = getVal('#mbti-ns'), ft = getVal('#mbti-ft'), pj = getVal('#mbti-pj');
-
-  // 兼容旧版：EI 单选
-  if (!ei){
-    const r = document.querySelector('input[name="ei"]:checked');
-    ei = r ? r.value : '';
+  // 隐藏 input 用于取值（#mbti-ei / #mbti-ns / #mbti-ft / #mbti-pj）
+  let hidden = sel.querySelector('input[type="hidden"]');
+  if(!hidden){
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = `mbti-${axis}`;
+    sel.appendChild(hidden);
   }
 
-  if (ei==='' && ns==='' && ft==='' && pj==='') return null;
+  // 切换展开
+  current.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    // 关掉兄弟的展开
+    sel.parentElement?.querySelectorAll('.mbti-select.mt-open')?.forEach(x=>{
+      if(x!==sel) x.classList.remove('mt-open');
+    });
+    sel.classList.toggle('mt-open');
+  });
+
+  // 选择某个值
+  menu.querySelectorAll('li[data-v]').forEach(li=>{
+    li.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const v = li.getAttribute('data-v') || '';
+      hidden.value = v;
+      current.textContent = li.textContent.trim() || '未填';
+      // 高亮当前选项（可选）
+      menu.querySelectorAll('li').forEach(n=> n.classList.remove('is-active'));
+      li.classList.add('is-active');
+      sel.classList.remove('mt-open');
+    });
+  });
+}
+
+// 读取 MBTI 概率（仅四下拉的隐藏值）
+function readMBTIProbs(){
+  const untested = $('#mbti-untested');
+  if(untested && untested.checked) return null;
+
+  const val = id => (document.querySelector(id)?.value || '');
+  const ei = val('#mbti-ei');
+  const ns = val('#mbti-ns');
+  const ft = val('#mbti-ft');
+  const pj = val('#mbti-pj');
+
+  if(!ei && !ns && !ft && !pj) return null;
 
   const pairProb = (v,a,b)=>{
     if(v==='')  return null;
@@ -174,34 +223,23 @@ function startProgressiveSurvey(){
   // 首题
   renderOneItem(currentIndex);
 
-  // 先隐藏提交
+  // 提交先隐藏
   const actions = $('#submitSurvey')?.closest('.actions');
   if(actions) actions.style.display = 'none';
 }
 
-// 7 点小圆控件（label.dot > input[type=radio] + span）
+// 7 点小圆（和你的 styles.css 对应：.dot-scale > label.dot > input + span）
 function buildDotScale(name, onPick){
   const wrap = document.createElement('div');
   wrap.className = 'dot-scale';
   for(let v=1; v<=7; v++){
     const id = `${name}-${v}-${Math.random().toString(36).slice(2,7)}`;
-    const label = document.createElement('label');
-    label.className = 'dot' + (v===4 ? ' dot-center' : '');
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = name;
-    input.value = String(v);
-    input.id = id;
-    const span = document.createElement('span');
-    label.appendChild(input);
-    label.appendChild(span);
+    const label = document.createElement('label'); label.className = 'dot' + (v===4?' dot-center':'');
+    const input = document.createElement('input'); input.type='radio'; input.name=name; input.value=String(v); input.id=id;
+    const span  = document.createElement('span');
+    label.appendChild(input); label.appendChild(span);
 
-    // 允许重新选择：不禁用；只在“首次选择时”推进一题
-    input.addEventListener('change', ()=>{
-      const raw = parseInt(input.value,10);
-      onPick(raw);
-    });
-
+    input.addEventListener('change', ()=> onPick(parseInt(input.value,10)));
     wrap.appendChild(label);
   }
   return wrap;
@@ -214,36 +252,27 @@ function renderOneItem(idx){
     if(actions) actions.style.display = 'flex';
     return;
   }
+  if(idx <= revealedUntil) return;
 
-  // 只渲染一次
-  if (idx <= revealedUntil) return;
   const it = ITEMS[idx];
-
   const node = document.createElement('div');
   node.className = 'item card slide-in';
   node.setAttribute('data-qid', it.id);
-
   node.innerHTML = `
     <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)}</h3>
-    <div class="scale-hint">
-      <span>非常不同意</span>
-      <span>非常同意</span>
-    </div>
+    <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
   `;
 
   const scale = buildDotScale('q'+it.id, async raw=>{
-    const isFirstPick = !ANSWERS.has(it.id);
+    const first = !ANSWERS.has(it.id);
     ANSWERS.set(it.id, raw);
 
-    // 首次作答 → 渲染下一题 & 平滑滚动聚焦
-    if(isFirstPick){
-      revealedUntil = Math.max(revealedUntil, idx);
+    if(first){
       renderOneItem(idx+1);
       await sleep(30);
       const last = form.lastElementChild;
       if(last){
         last.scrollIntoView({behavior:'smooth', block:'center'});
-        // 兜底再推一把（考虑头图高度）
         setTimeout(()=>{
           const rect = last.getBoundingClientRect();
           const y = window.scrollY + rect.top - Math.min(120, window.innerHeight*0.15);
@@ -255,7 +284,6 @@ function renderOneItem(idx){
 
   node.appendChild(scale);
   form.appendChild(node);
-
   revealedUntil = idx;
 }
 
@@ -271,7 +299,7 @@ function readSurvey(){
   return {ok:true, answers: out};
 }
 
-// ---------- 带符号多维加权：A/C/D/M/S/L ----------
+// ---------- 带符号多维加权 ----------
 function computeSurveyDims(answers){
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
@@ -279,14 +307,14 @@ function computeSurveyDims(answers){
   };
   for(const it of ITEMS){
     const raw = answers[it.id];
-    const score = mapLikertToFive(raw); // 1..5
+    const score = mapLikertToFive(raw);       // 1..5
     const w = (typeof it.w === 'number' ? it.w : 1.0);
 
     [['A',it.A],['C',it.C],['D',it.D],['M',it.M],['S',it.S],['L',it.L]].forEach(([k,coef])=>{
       const c = Number(coef)||0;
       if(c === 0) return;
       const weightAbs = Math.abs(w * c);
-      const signed = (c >= 0) ? score : (6 - score); // 反向：1↔5, 3不变
+      const signed = (c >= 0) ? score : (6 - score);   // 反向（1↔5）
       acc[k].num += weightAbs * signed;
       acc[k].den += weightAbs;
     });
@@ -301,13 +329,9 @@ function computeSurveyDims(answers){
 // ---------- MBTI 先验 ----------
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
-  const x = meta.xCount;               // 未测已排除
-  let base = 0.30;                     // 四轴全定
-  if(x >= 1) base = 0.20;              // 含 X
-  let cert = 1.0;
-  if(x===1) cert = 0.67;
-  else if(x===2) cert = 0.50;
-  else if(x>=3) cert = 0.40;
+  const x = meta.xCount;
+  let base = 0.30; if(x >= 1) base = 0.20;
+  let cert = 1.0; if(x===1) cert=0.67; else if(x===2) cert=0.50; else if(x>=3) cert=0.40;
   return base * cert;
 }
 function priorsFromProbs(p){
@@ -349,29 +373,22 @@ function scoreAll(read){
     survey_raw: dims
   };
 
-  // —— 宏类型初判（与你之前约定一致，后续可回归调整）——
   const tLow = 2.5, tMid = 3.5;
   let macro = null;
-
   if(res.A < tLow){
     macro = (res.C >= 3.5) ? 'A1 未触及—高依赖外部建构' : 'A0 未触及—低觉察沉浸';
   }else if(res.A >= tMid && res.D >= tMid){
-    if(res.S >= 4.0){
-      macro = 'C2 去魅—彻底停滞/冻结（候选）';
-    }else if(res.C <= 3.0 && res.L <= 3.0){
-      macro = 'C1 去魅—理想自由人（候选）';
-    }else{
-      macro = (res.C <= 2.5) ? 'C0 去魅—“解”候选' : 'C1/C2 去魅—待细分';
-    }
+    if(res.S >= 4.0)                           macro = 'C2 去魅—彻底停滞/冻结（候选）';
+    else if(res.C <= 3.0 && res.L <= 3.0)      macro = 'C1 去魅—理想自由人（候选）';
+    else                                       macro = (res.C <= 2.5) ? 'C0 去魅—“解”候选' : 'C1/C2 去魅—待细分';
   }else if(res.A >= 3.0 && res.D <= tMid){
-    if(res.C >= 4.0) macro = 'B0 建构—高建构依赖';
-    else if(res.C >= 3.0 && res.L <= 3.0) macro = 'B1 建构—局部建构（候选）';
-    else if(res.C < 2.5 && res.M >= 3.5) macro = 'B3 建构—功能主义姿态（候选）';
-    else macro = 'B2 建构—透明虚构（候选）';
+    if(res.C >= 4.0)                           macro = 'B0 建构—高建构依赖';
+    else if(res.C >= 3.0 && res.L <= 3.0)      macro = 'B1 建构—局部建构（候选）';
+    else if(res.C < 2.5 && res.M >= 3.5)       macro = 'B3 建构—功能主义姿态（候选）';
+    else                                       macro = 'B2 建构—透明虚构（候选）';
   }else{
     macro = 'B2 建构—透明虚构（候选）';
   }
-
   res.macro_hint = macro;
   return res;
 }
