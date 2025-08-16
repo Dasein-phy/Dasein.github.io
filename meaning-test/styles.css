@@ -1,89 +1,90 @@
-/* ===== 意义姿态测试（仅作用于 .mt-app 命名空间） ===== */
+/* ===== 意义姿态测试样式（scoped 到 .mt-app） ===== */
 
-.mt-toolbar{ margin:16px 0 8px; }
-.mt-btn{
-  display:inline-block; padding:8px 14px; border-radius:12px;
-  border:1px solid rgba(0,0,0,.08); background:#fff; color:#1f2937; text-decoration:none;
-  transition:all .2s ease;
-}
-.mt-btn:hover{ background:rgba(47,111,128,.06); border-color:rgba(47,111,128,.25); }
-.mt-btn-back{}
-
-/* 包裹层：宽度对齐全站内容区 */
-.mt-wrap{ max-width:960px; margin:0 auto; padding:16px; }
-
-/* 主题色（使用你站点的绿，保证风格统一） */
+/* ---------- 主题色（方便全站后续复用） ---------- */
 :root{
   --mt-fg:#1a1a1a;
   --mt-muted:#666;
-  --mt-brand:#718771;
-  --mt-accent:#FFD9A3;
+  --mt-brand:#718771;    /* 绿 */
+  --mt-accent:#FFD9A3;   /* 橙米 */
+  --mt-success:#73AE52;  /* 次绿 */
+
+  /* 兼容老变量名 */
+  --brand:#718771;
+  --accent:#FFD9A3;
+  --success:#73AE52;
+
   --mt-radius:16px;
 }
 
-/* 命名空间下再设置基础 */
+/* ---------- 基础 ---------- */
 .mt-app *{ box-sizing:border-box; }
 .mt-app{ color:var(--mt-fg); }
+.mt-wrap{ max-width:960px; margin:0 auto; padding:16px; }
 
-/* 页头/副标题 */
 .mt-app .mt-header{ padding-top:4px; padding-bottom:8px; }
 .mt-app h1{ margin:0 0 8px; font-size:28px; }
 .mt-app .subtitle{ margin:0; color:var(--mt-muted); }
 
-/* 卡片（沿用你站点卡片风的感觉，但独立定义，防止互相影响） */
+/* 卡片 */
 .mt-app .card{
-  background:#fff; border:1px solid rgba(0,0,0,.06);
-  border-radius:var(--mt-radius); padding:16px; margin:16px 0;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:var(--mt-radius);
+  padding:16px;
+  margin:16px 0;
   box-shadow:0 6px 18px rgba(0,0,0,.06);
 }
 .mt-app .hidden{ display:none; }
 
-/* 按钮（仅限测试页内） */
+/* 顶部留白≈卡片高度的 1/10；干掉主题注入的伪元素横线 */
+.mt-app h2::before{ content:none !important; border:0 !important; margin:0 !important; }
+.mt-app .card h2{ margin:6px 0 12px; }
+
+/* 按钮 */
 .mt-app .btn{
-  border:1px solid var(--mt-brand); color:var(--mt-brand);
-  background:#fff; padding:8px 16px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--mt-brand);
+  color:var(--mt-brand);
+  background:#fff;
+  padding:8px 16px;
+  border-radius:999px;
+  cursor:pointer;
   transition: all .15s ease;
 }
 .mt-app .btn.primary{ background:var(--mt-brand); color:#fff; border-color:var(--mt-brand); }
 .mt-app .btn:hover{ opacity:.95; }
 .mt-app .actions{ margin-top:16px; display:flex; gap:12px; }
 
-/* 表单与条目 */
-.mt-app .mbti-row{ margin:8px 0; }
-.mt-app .grid-4{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-
+/* 文本/条目 */
 .mt-app .item{ padding:12px; border-bottom:1px dashed #eee; }
 .mt-app .item h3{ margin:0 0 8px; font-size:16px; }
-
-.mt-app .scale{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
-.mt-app .scale label{ font-size:12px; color:var(--mt-muted); }
-.mt-app .scale input{ accent-color:var(--mt-brand); }
-
-.mt-app .badge{ display:inline-block; padding:2px 8px; border-radius:8px; font-size:12px; background:var(--mt-accent); color:#333; }
-
-/* 页脚 */
+.mt-app .badge{
+  display:inline-block; padding:2px 8px; border-radius:8px; font-size:12px;
+  background:var(--mt-accent); color:#333;
+}
 .mt-app .mt-footer{ color:#6b7280; font-size:14px; }
 
-/* 小屏微调 */
+/* 小屏 */
 @media (max-width: 768px){
   .mt-app h1{ font-size:24px; }
-  .mt-app .grid-4{ grid-template-columns: 1fr; }
 }
 
-/* ===== 修正“横线 + 留白”：覆盖主题给 h2 注入的分隔线 ===== */
-.mt-app h2::before{ content:none !important; border:0 !important; margin:0 !important; }
-.mt-app .card h2{ margin: 6px 0 12px; }      /* 顶部留白≈卡片高度的 1/10 */
-
-/* ===== MBTI 右展开卡片式下拉 ===== */
+/* =========================================================
+   MBTI 右展开卡片式下拉（与 app.js 的 150ms 定时开合配合）
+   结构：
+   .mbti-rail > .mbti-item[data-axis]
+     > .axis
+     > .mbti-select[data-axis]
+         .mbti-current
+         ul.mbti-menu > li[data-v]
+   ========================================================= */
 .mt-app .mt-tip{ color:#6b7280; margin:6px 0 12px; }
-
 .mt-app .mbti-rail{ display:flex; flex-direction:column; gap:12px; margin:8px 0 14px; }
 .mt-app .mbti-item{ display:flex; align-items:center; gap:12px; }
 .mt-app .mbti-item .axis{ width:56px; color:#374151; font-weight:600; }
 
 .mt-app .mbti-select{
-  position: relative;
-  --w: 240px;                 /* 展开后整体宽度 */
+  position:relative; display:block; margin:8px 0;
+  --w: 240px;
   --h: 38px;
   height: var(--h);
 }
@@ -99,282 +100,108 @@
 }
 .mt-app .mbti-menu{
   position:absolute; top:0; left:100%;
-  margin-left: 8px;
-  width: var(--w);
-  height: var(--h);
-  list-style:none; padding:0; margin-top:0;
+  margin-left:8px;
+  width:var(--w);
+  height:var(--h);
+  list-style:none;
+  padding:0; margin:0;
   display:flex; align-items:center; gap:8px;
-  background:#fff; border:1px solid rgba(0,0,0,.08);
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
   border-radius:12px;
   box-shadow:0 10px 30px rgba(0,0,0,.08);
-  transform: translateX(-70%);           /* 默认只露出约 30% */
-  opacity:.0; pointer-events:none;
-  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+  opacity:0; transform: translateX(-6px) scale(.98);
+  pointer-events:none;
+  transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.mt-app .mbti-select:hover .mbti-menu,
-.mt-app .mbti-select:focus-within .mbti-menu,
-.mt-app .mbti-select.mt-open .mbti-menu{
-  transform: translateX(0); opacity:1; pointer-events:auto;
+/* 打开态（由 JS 加 .mt-open；也兼容 :focus-within） */
+.mt-app .mbti-select.mt-open .mbti-menu,
+.mt-app .mbti-select:focus-within .mbti-menu{
+  opacity:1; transform: translateX(0) scale(1); pointer-events:auto;
 }
+
 .mt-app .mbti-menu li{
   display:inline-block;
   padding:6px 12px;
   border-radius:10px;
   border:1px solid rgba(47,111,128,.18);
-  color:#2f6f80; cursor:pointer; user-select:none;
+  color:#2f6f80;
+  cursor:pointer; user-select:none;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 .mt-app .mbti-menu li:hover{ background:rgba(47,111,128,.08); }
 .mt-app .mbti-menu li[data-v=""]{ color:#6b7280; border-color:rgba(0,0,0,.12); }
+.mt-app .mbti-menu li.is-active{
+  border-color: var(--mt-brand);
+  color: var(--mt-brand);
+  background: rgba(113,135,113,.08);
+}
 
-/* 未测：置灰并禁用交互 */
+/* “未测”禁用 */
 .mt-app .mbti-rail.disabled{ opacity:.5; pointer-events:none; }
-.mt-app .mbti-none{ margin-top:4px; color:#374151; }
 
-/* 小屏：菜单占满行、向下展开 */
+/* 小屏：菜单向下展开并自适应换行 */
 @media (max-width: 768px){
   .mt-app .mbti-select{ --w: 100%; }
   .mt-app .mbti-menu{
     left:0; margin-left:0; top: calc(var(--h) + 6px);
-    transform: translateY(-6px);
     width:100%; height:auto; padding:8px;
     flex-wrap:wrap; gap:8px;
+    transform: translateY(-6px);
   }
 }
 
-/* 只禁用四个选择器，不禁用“未测”复选框 */
-.mbti-select.is-disabled .mbti-current{ opacity:.5; cursor:not-allowed; }
-.mbti-select.is-disabled .mbti-menu{ display:none !important; }
-
-/* 悬停/展开：保持菜单与容器同一 wrap，避免移入时收起 */
-.mbti-select{ position:relative; display:block; margin:8px 0; }
-.mbti-select .mbti-menu{
-  position:absolute; left:100%; top:0;
-  opacity:0; transform: translateX(-6px) scale(.98);
-  transition: opacity .18s ease, transform .18s ease;
-  pointer-events:none;
-}
-.mbti-select.mt-open .mbti-menu{
-  opacity:1; transform: translateX(0) scale(1);
-  pointer-events:auto;
-}
-
-/* ====== 测试页：MBTI 卡顶部留白控制 ====== */
-#mbti.card h2::before { content: none !important; border: 0 !important; }
-#mbti.card h2 { margin-top: 0; }
-
-/* ====== 7点小圆 Likert ====== */
-.dot-scale{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 4px 6px;
-}
-.dot-scale .dot{
-  position: relative;
-  width: 28px; height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.dot-scale .dot input{
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.dot-scale .dot span{
-  display: block;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #cfd8d3;
-  transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08) inset;
-}
-.dot-scale .dot.dot-center span{
-  width: 12px; height: 12px;
-}
-.dot-scale .dot:hover span{
-  transform: scale(1.15);
-  background: #b8c5bf;
-}
-.dot-scale .dot input:checked + span{
-  background: var(--brand);
-  transform: scale(1.25);
-  box-shadow: 0 0 0 6px rgba(113,135,113,.10);
-}
-
-/* 左右提示文字（非常不同意 / 非常同意） */
-.scale-hint{
-  display:flex; justify-content:space-between; font-size:12px; color:#777; margin: 2px 4px 6px;
-}
-
-/* 每题卡片的进入动画 */
-.item.slide-in{
-  animation: slideInUp .28s ease both;
-}
-@keyframes slideInUp{
-  from{ opacity:0; transform: translateY(8px); }
-  to  { opacity:1; transform: translateY(0); }
-}
-
-/* 选中态：空心大圆 + #FFD9A3，更显眼 */
-.dot-scale .dot input:checked + span{
-  background: transparent;                 /* 空心 */
-  border: 2px solid #FFD9A3;               /* 主色边框 */
-  transform: scale(1.35);                  /* 略放大 */
-  box-shadow: 0 0 0 6px rgba(255,217,163,.25); /* 柔光外圈 */
-}
-
-/* hover 时保持轻微反馈，但不盖过选中态 */
-.dot-scale .dot:hover span{
-  background: transparent;
-  border-color: #FFD9A3;
-  transform: scale(1.18);
-}
-
-/* 默认小圆样式（未选中） */
-.dot-scale .dot span{
-  width: 10px; height: 10px; border-radius: 50%;
-  background: transparent;
-  border: 2px solid #cfd8d3;
-  transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease, border-color .18s ease;
-  box-shadow: none;
-}
-
-/* 中心点略大（保持视觉锚点） */
-.dot-scale .dot.dot-center span{
-  width: 12px; height: 12px;
-}
-
-/* ===== Likert 7 小圆点（更大的点击热区，轻微按压动画） ===== */
-.likert7{
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 0;
-}
-
-.likert-option{
-  position: relative;
-  width: 28px;              /* 容器尺寸 = 热区可视参考，不等于按钮尺寸 */
-  height: 28px;
-  display: inline-block;
-}
-
-/* 真正的点击热区：不可见，但可点。扩大到小圆点外 8px */
-.likert-option input{
-  position: absolute;
-  inset: -8px;              /* 扩大热区（↑ 你可以改 -10~-14 更大） */
-  opacity: 0;
-  cursor: pointer;
-  margin: 0;
-}
-
-/* 可见的小圆点（按钮本体视觉尺寸不变） */
-.likert-dot{
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 12px; height: 12px;             /* 圆点视觉大小 */
-  border: 2px solid #9aa1aa;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;                   /* 事件给 input 负责 */
-  transition: transform .12s ease, border-color .12s ease,
-              box-shadow .12s ease, background-color .12s ease;
-}
-
-/* 悬停时轻微放大一点点（不抖） */
-.likert-option:hover .likert-dot{
-  transform: translate(-50%, -50%) scale(1.08);
-}
-
-/* 选中态：强调外圈与光晕，颜色按你要求的 #FFD9A3 */
-.likert-option.is-selected .likert-dot{
-  border-color: #FFD9A3;
-  box-shadow: 0 0 0 4px rgba(255,217,163,.25);
-  background: radial-gradient(circle at center, rgba(255,217,163,.45) 0 45%, transparent 50%);
-}
-
-/* 点击回弹：很小幅度的“按压”，避免大抖动 */
-@keyframes tap-press {
-  0%   { transform: translate(-50%,-50%) scale(1); }
-  50%  { transform: translate(-50%,-50%) scale(0.96); }
-  100% { transform: translate(-50%,-50%) scale(1); }
-}
-.likert-option.tapped .likert-dot{
-  animation: tap-press .12s ease;
-}
-
-/* —— 保险：即便你曾给已回答项目加过“锁定”样式，也强制允许再次点击 —— */
-.item [type="radio"]{ pointer-events: auto !important; }
-.item, .item *{ user-select: none; }  /* 防止快速点击误选中标注文字 */
-
-/* === Likert7 均分布局 & 选中样式（对齐 fix） === */
-
-/* 两侧提示文字占满一行并左右对齐 */
+/* =========================================
+   Likert 7 小圆：等距铺满 + 大热区 + 选中色 #FFD9A3
+   ========================================= */
 .item .scale-hint{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  color:#8b8f97;
-  font-size:12px;
-  margin-bottom:6px;
+  display:flex; justify-content:space-between; align-items:center;
+  color:#8b8f97; font-size:12px; margin-bottom:6px;
 }
 
-/* 7 个圆点：均分一行，和提示文字天然对齐 */
-.likert7{
+/* 容器按 7 等分铺满，保证等距 */
+.dot-scale{
   display:grid;
-  grid-template-columns: repeat(7, 1fr); /* 7 等分 */
+  grid-template-columns: repeat(7, 1fr);
   align-items:center;
-  gap: 0;                /* 不留空隙，保证等距 */
   width:100%;
   padding:8px 0 10px;
 }
 
-/* 每个选项有较大热区，但圆点保持小巧 */
-.likert-option{
+/* 每一格是大热区（不改变小圆视觉大小） */
+.dot-scale .dot{
   position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  min-height:40px;       /* 扩大可点范围，仅热区变大 */
-}
-.likert-option input{
-  position:absolute;
-  inset:0;               /* 整块都能点 */
-  opacity:0;
+  display:flex; align-items:center; justify-content:center;
+  min-height:40px;
   cursor:pointer;
 }
-
-/* 圆点 */
-.likert-dot{
-  width:16px;
-  height:16px;
+.dot-scale .dot input{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+.dot-scale .dot span{
+  width:16px; height:16px;
   border:2px solid #bfc7cf;
   border-radius:50%;
   background:transparent;
-  pointer-events:none;   /* 点击落在 label 上 */
-  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  pointer-events:none;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
 }
 
-/* 中间的点稍微大一点 */
-.likert-option.is-center .likert-dot{
-  transform: scale(1.18);
+/* 中心点略大，做视觉锚点 */
+.dot-scale .dot.dot-center span{ transform: scale(1.16); }
+
+/* hover 轻微放大（避免抖动感） */
+.dot-scale .dot:hover span{ transform: scale(1.08); }
+
+/* 选中：空心大圆 + 柔光外圈（#FFD9A3） */
+.dot-scale .dot input:checked + span{
+  border-color:#FFD9A3;
+  box-shadow:0 0 0 3px rgba(255,217,163,.35);
 }
 
-/* 轻微 hover 提示，不夸张避免“抖动感大” */
-.likert-option:hover .likert-dot{
-  transform: scale(1.08);
+/* 进入动画（逐题滑出） */
+.item.slide-in{ animation: slideInUp .28s ease both; }
+@keyframes slideInUp{
+  from{ opacity:0; transform: translateY(8px); }
+  to  { opacity:1; transform: translateY(0); }
 }
-
-/* 选中态：空心大圆 + 主题色 #FFD9A3 */
-.likert-option.is-selected .likert-dot{
-  border-color: #FFD9A3;
-  box-shadow: 0 0 0 3px rgba(255,217,163,.35);
-}
-
-/* 点击瞬间的“按压”反馈（如果你在 JS 里会加 tapped 类） */
-.likert-option.tapped .likert-dot{
-  transform: scale(1.02);
-}
-
