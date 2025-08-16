@@ -1,41 +1,27 @@
-/* ===== 意义姿态测试 app.js — v3（修复“总是3分” & 正确读取v2题库权重） =====
- *
- * 这份文件可直接替换你当前的 app.js。
- * 主要修复点：
- * 1) 正确解析 items.baseline.v2.json / items.baseline.json 中的 weights 结构
- *    （例如 {A: +1, C: -0.6, ..., M_aff: +0.8, M_func: -0.4}）。
- * 2) 计分采用“带符号多维加权”，并分别计算 M_func 与 M_aff 两个子分数。
- * 3) 宏类型判读中，功能主义姿态（B3）改用 M_func_s 作为触发条件。
- *
- * 结构导航：
- * - 资源路径常量
- * - 全局状态（CFG / MBTI / ITEMS / ANSWERS 等）
- * - 小工具函数（mapLikertToFive / clip / sleep / escapeHTML）
- * - 加载模块 loadAll()  ←★ 修复点（解析 weights）
- * - 初始化入口 init()   ← 绑定按钮，进入 MBTI / 问卷
- * - MBTI 交互 initMBTIDropdowns() / readMBTIProbs()
- * - Progressive 问卷：startProgressiveSurvey() / buildLikert7() / renderOneItem() / readSurvey()
- * - 计分：computeSurveyDims()   ←★ 修复点（累计 A/C/D/S/L + M_func/M_aff）
- * - 先验与融合：alphaFromMBTI() / priorsFromProbs() / scoreAll()
- * - 报告渲染 renderReport()
- * - 下载 downloadJSON()
- * - 启动 DOMContentLoaded
- */
+/* =========================================================
+   意义姿态测试 app.js — 稳定整合版
+   - 题库（v2/v1）统一解析 weights
+   - Progressive 渐进出题 + 可控打散
+   - MBTI 右侧卡片式菜单（150ms 悬停展开/可点击）
+   - 计分：带符号多维加权 + M_func/M_aff + L 的矛盾惩罚
+   - 宏类型判读（含 A 的过渡带细分）
+   ========================================================= */
 
-/* ---------- 资源路径 ---------- */
-const cfgPath = './app.config.json';
-const mbtiPriorPath = './mbti.prior.config.json';
-const itemsPathV2 = './items.baseline.v2.json';
-const itemsPathV1 = './items.baseline.json';
+/* ---------- 资源路径（如需改路径只改这里） ---------- */
+const cfgPath        = './app.config.json';
+const mbtiPriorPath  = './mbti.prior.config.json';
+const itemsPathV2    = './items.baseline.v2.json';
+const itemsPathV1    = './items.baseline.json';
 
 /* ---------- 全局状态 ---------- */
-let CFG = null;
+let CFG  = null;
 let MBTI = null;
-/** 统一题库项：
+/** 统一题库项（内部格式）
  * {
- *   id, text, w(题目整体权重，默认1.0),
- *   A,C,D,S,L (数值系数，可正可负),
- *   M_func, M_aff (动因子维度)
+ *   id, text, w(默认1.0),
+ *   A, C, D, S, L (可正可负),
+ *   M_func, M_aff,
+ *   meta?: { is_attention?:bool, duplicate_of?:id|null }
  * }
  */
 let ITEMS = [];
@@ -48,134 +34,135 @@ let currentIndex = 0;
 const $  = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-/* ---------- 工具 ---------- */
+/* ---------- 工具函数 ---------- */
 function mapLikertToFive(raw){ return 1 + (raw - 1) * (4/6); }
 function clip(x, lo=1, hi=5){ return Math.max(lo, Math.min(hi, x)); }
 const sleep = ms => new Promise(r=>setTimeout(r, ms));
 function escapeHTML(s){
-  return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  return String(s).replace(/[&<>"']/g, m=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
 }
-
-/* ---------- 加载：读取配置 + 题库（★修复“权重未解析”） ----------
- * 题库 v2/v1 均使用：{ id, text, w?, weights:{A,C,D,S,L,M_func,M_aff} }
- * 过去版本错误地读取了 n.A / n.C… 导致全为 0；这会使分母=0 → 默认3分。
- * 这里统一按 weights 表驱动生成内部 ITEMS 结构。
- */
 async function tryFetchJSON(path){
   try{
     const r = await fetch(path);
-    if(!r.ok) throw new Error(path + ' not ok');
+    if(!r.ok) throw new Error(path+' not ok');
     return await r.json();
   }catch(e){ return null; }
 }
 
-function normalizeItem(node){
-  const weights = node.weights || {};
-  return {
-    id   : node.id,
-    text : node.text || node.stem || ('Q' + node.id),
-    w    : (typeof node.w === 'number' ? node.w : 1.0),
-    A    : +weights.A    || 0,
-    C    : +weights.C    || 0,
-    D    : +weights.D    || 0,
-    S    : +weights.S    || 0,
-    L    : +weights.L    || 0,
-    // 动因：分别处理功能/情感两个子维度；若只有 M 则可在此兼容性映射
-    M_func: +weights.M_func || 0,
-    M_aff : +weights.M_aff  || 0,
-  };
-}
+/* =========================================================
+   模块 A：加载全部配置和题库（★这是你以后要找“解析题库”的地方）
+   - 正确解析 v2 的 weights 字段；v1 退化为 0 权重（可按需映射）
+   - 按主导维度分桶 + 可复现打乱 + 轮盘交错出题
+   ========================================================= */
+async function loadAll(){
+  const [cfg, prior] = await Promise.all([
+    tryFetchJSON(cfgPath),
+    tryFetchJSON(mbtiPriorPath)
+  ]);
+  CFG  = cfg;
+  MBTI = prior;
 
-// ---- 在 loadAll() 内，替换 v2 分支 ----
-let v2 = await tryFetchJSON(itemsPathV2);
-if (Array.isArray(v2) && v2.length){
-  ITEMS = v2.map(n => {
-    const w = n.weights || {};
-    return {
+  // ---- v2 优先（你当前提供的是 v2）----
+  const v2 = await tryFetchJSON(itemsPathV2);
+  if (Array.isArray(v2) && v2.length){
+    ITEMS = v2.map(n=>{
+      const w = n.weights || {};
+      return {
+        id: n.id,
+        text: n.text || n.stem || ('Q'+n.id),
+        w: (typeof n.w==='number' ? n.w : 1.0),
+        A: +w.A || 0, C: +w.C || 0, D: +w.D || 0, S: +w.S || 0, L: +w.L || 0,
+        M_func: +w.M_func || 0,
+        M_aff : +w.M_aff  || 0,
+        meta: { is_attention: !!n.is_attention, duplicate_of: n.duplicate_of || null }
+      };
+    });
+
+    // ---- 可控打散（把同类分开，提升一致性可测性）----
+    // 1) 主导维度归桶（A / C / D / M / S / L）
+    const buckets = {A:[],C:[],D:[],M:[],S:[],L:[]};
+    ITEMS.forEach(it=>{
+      const absMap = {
+        A: Math.abs(it.A),
+        C: Math.abs(it.C),
+        D: Math.abs(it.D),
+        M: Math.max(Math.abs(it.M_func||0), Math.abs(it.M_aff||0)),
+        S: Math.abs(it.S),
+        L: Math.abs(it.L)
+      };
+      let dom='A', maxv=absMap.A;
+      for(const k of ['C','D','M','S','L']){
+        if(absMap[k] > maxv){ dom=k; maxv=absMap[k]; }
+      }
+      buckets[dom].push(it);
+    });
+
+    // 2) 桶内可复现打乱（URL ?seed=xxx）
+    const seed = (new URL(location.href)).searchParams.get('seed') || 'mt-seed';
+    function seededShuffle(arr, s){
+      let h = 2166136261;
+      for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      const out = arr.slice();
+      for(let i=out.length-1;i>0;i--){
+        // 线性同余式扰动
+        h ^= (h<<13); h ^= (h>>>7); h ^= (h<<17);
+        const j = Math.abs(h) % (i+1);
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    }
+    for(const k in buckets){ buckets[k] = seededShuffle(buckets[k], seed + '-' + k); }
+
+    // 3) 轮盘交错：A→C→D→M→S→L 循环抽取，尽量避免同类连续
+    const order = [];
+    const keys = ['A','C','D','M','S','L'];
+    let has = true, p = 0;
+    while(has){
+      has = false;
+      for(let step=0; step<keys.length; step++){
+        const k = keys[(p+step)%keys.length];
+        if(buckets[k].length){
+          order.push(buckets[k].shift());
+          has = true;
+        }
+      }
+      p++;
+    }
+    ITEMS = order;
+
+  }else{
+    // ---- v1 退化：如果只有 v1，就先把所有维度权重设 0（或在此做你的映射）----
+    const v1 = await tryFetchJSON(itemsPathV1);
+    if(!Array.isArray(v1) || !v1.length) throw new Error('题库加载失败');
+    ITEMS = v1.map(n=>({
       id: n.id,
-      text: n.text || n.stem || ('Q' + n.id),
-      // 统一字段：A/C/D/S/L + M_func/M_aff；默认 0
-      A: +w.A || 0,
-      C: +w.C || 0,
-      D: +w.D || 0,
-      S: +w.S || 0,
-      L: +w.L || 0,
-      M_func: +w.M_func || 0,
-      M_aff: +w.M_aff || 0,
-      // 题面权重（整体重要度），若日后需要可额外加；先默认 1
-      w: (typeof n.w === 'number' ? n.w : 1.0),
-      meta: {
-        is_attention: !!n.is_attention,
-        duplicate_of: n.duplicate_of || null
-      }
-    };
-  });
-
-  // —— 可控随机出题（打散同类）——
-  // 1) 先按“主导维度”归桶（看绝对权重最大的维度）
-  const buckets = {A:[],C:[],D:[],M:[],S:[],L:[]};
-  ITEMS.forEach(it=>{
-    const absMap = {
-      A: Math.abs(it.A), C: Math.abs(it.C), D: Math.abs(it.D),
-      M: Math.max(Math.abs(it.M_func||0), Math.abs(it.M_aff||0)), // M 取两者的较大值做主导参考
-      S: Math.abs(it.S), L: Math.abs(it.L)
-    };
-    let dom = 'A', maxv = absMap.A;
-    for(const k of ['C','D','M','S','L']){
-      if(absMap[k] > maxv){ dom = k; maxv = absMap[k]; }
-    }
-    buckets[dom].push(it);
-  });
-
-  // 2) 每个桶内部做可复现打乱（用 URL ?seed=xxx 控制）
-  const seed = (new URL(location.href)).searchParams.get('seed') || 'mt-seed';
-  function seededShuffle(arr, s){
-    let h = 2166136261;
-    for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-    const out = arr.slice();
-    for(let i=out.length-1;i>0;i--){
-      h ^= (h<<13); h ^= (h>>>7); h ^= (h<<17);
-      const j = Math.abs(h) % (i+1);
-      [out[i], out[j]] = [out[j], out[i]];
-    }
-    return out;
+      text: n.text || n.stem || ('Q'+n.id),
+      w: (typeof n.w==='number' ? n.w : 1.0),
+      A:0, C:0, D:0, S:0, L:0, M_func:0, M_aff:0
+    }));
   }
-  for(const k in buckets){ buckets[k] = seededShuffle(buckets[k], seed + '-' + k); }
-
-  // 3) 轮盘式交错抽题：A→C→D→M→S→L 轮转，尽量避免同类连在一起
-  const order = [];
-  const keys = ['A','C','D','M','S','L'];
-  let has = true, p = 0;
-  while(has){
-    has = false;
-    for(let step=0; step<keys.length; step++){
-      const k = keys[(p+step)%keys.length];
-      if(buckets[k].length){
-        order.push(buckets[k].shift());
-        has = true;
-      }
-    }
-    p++;
-  }
-  ITEMS = order;
 }
 
-/* ---------- 初始化入口：绑定按钮/切换卡片 ---------- */
+/* =========================================================
+   模块 B：初始化入口与导航（按钮切卡片）
+   - 你只需要确保 index.html 里的 id：#startBtn / #toSurvey / #submitSurvey ...
+   ========================================================= */
 function init(){
-  const btnStart   = $('#startBtn');
-  const btnToSurvey= $('#toSurvey');
-  const btnSubmit  = $('#submitSurvey');
-  const btnDownload= $('#download');
-  const btnRestart = $('#restart');
+  const btnStart    = $('#startBtn');
+  const btnToSurvey = $('#toSurvey');
+  const btnSubmit   = $('#submitSurvey');
+  const btnDownload = $('#download');
+  const btnRestart  = $('#restart');
 
   if(btnStart){
     btnStart.addEventListener('click', ()=>{
       $('#intro')?.classList.add('hidden');
       $('#mbti')?.classList.remove('hidden');
-      initMBTIDropdowns(); // 初始化 MBTI 交互
+      initMBTIDropdowns(); // 初始化 MBTI 交互（必须在显示后调用）
     });
   }
-
   if(btnToSurvey){
     btnToSurvey.addEventListener('click', ()=>{
       $('#mbti')?.classList.add('hidden');
@@ -183,7 +170,6 @@ function init(){
       startProgressiveSurvey();
     });
   }
-
   if(btnSubmit){
     btnSubmit.addEventListener('click', ()=>{
       const read = readSurvey();
@@ -192,31 +178,25 @@ function init(){
       renderReport(result);
     });
   }
-
   if(btnDownload) btnDownload.addEventListener('click', downloadJSON);
   if(btnRestart)  btnRestart.addEventListener('click', ()=>location.reload());
 }
 
-/* ---------- MBTI 交互（四轴卡片式：点击/悬停展开 + 150ms 延迟） ----------
- * HTML 结构（见 index.html）：
- * .mbti-rail > .mbti-item[data-axis]
- *   > .axis
- *   > .mbti-select[data-target="ei/ns/ft/pj"][data-value=""]
- *       .mbti-current(按钮)
- *       ul.mbti-menu > li[data-v] （'' / 轴两端字母 / 'X'）
- * 未测复选框：#mbti-none
- */
+/* =========================================================
+   模块 C：MBTI 交互（右侧卡片式下拉 + 150ms 悬停延迟）
+   - HTML 结构见 index.html 的 .mbti-rail 区域
+   - 复选框 #mbti-none 只禁用四个选择器本身，不把整条 rail 置灰
+   ========================================================= */
 function initMBTIDropdowns(){
-  const rail     = document.querySelector('.mbti-rail');
-  const untested = document.querySelector('#mbti-none');
+  const rail     = $('.mbti-rail');
+  const untested = $('#mbti-none');
   if(!rail) return;
 
-  const selects = Array.from(rail.querySelectorAll('.mbti-select'));
-
+  const selects = $$('.mbti-select', rail);
   selects.forEach(sel=>{
     let openTimer=null, closeTimer=null;
-    const cur  = sel.querySelector('.mbti-current');
-    const menu = sel.querySelector('.mbti-menu');
+    const cur  = $('.mbti-current', sel);
+    const menu = $('.mbti-menu', sel);
 
     // 悬停 150ms 展开 / 离开 160ms 收起
     sel.addEventListener('mouseenter', ()=>{
@@ -234,14 +214,14 @@ function initMBTIDropdowns(){
       sel.classList.add('mt-open');
     });
 
-    // 点击选项：写入 data-value，更新文案与高亮
+    // 点击选项：写 data-value，更新文案与选中样式
     if(menu){
       menu.addEventListener('click', e=>{
         const li = e.target.closest('li[data-v]');
         if(!li) return;
         const v = li.getAttribute('data-v') || '';
         sel.dataset.value = v;
-        menu.querySelectorAll('li').forEach(x=>x.classList.remove('is-active'));
+        $$('.mbti-menu li', sel).forEach(x=>x.classList.remove('is-active'));
         li.classList.add('is-active');
         if(cur) cur.textContent = (v==='' ? '未填' : v);
         sel.classList.remove('mt-open');
@@ -257,26 +237,22 @@ function initMBTIDropdowns(){
         sel.classList.toggle('is-disabled', dis);
         if(dis){
           sel.dataset.value = '';
-          const cur = sel.querySelector('.mbti-current');
+          const cur = $('.mbti-current', sel);
           if(cur) cur.textContent = '未填';
-          sel.querySelectorAll('.mbti-menu li').forEach(x=>x.classList.remove('is-active'));
+          $$('.mbti-menu li', sel).forEach(x=>x.classList.remove('is-active'));
         }
       });
     });
   }
 }
 
-/** 读取 MBTI 概率（从 .mbti-select 的 data-value 读取；未测→null） */
+/** 读取 MBTI 概率（从 .mbti-select 的 data-value；未测→null） */
 function readMBTIProbs(){
-  const untested = document.querySelector('#mbti-none');
+  const untested = $('#mbti-none');
   if(untested && untested.checked) return null;
 
-  const get = axis => {
-    const el = document.querySelector(`.mbti-select[data-target="${axis}"]`);
-    return el ? (el.dataset.value || '') : '';
-  };
+  const get = axis => ($(`.mbti-select[data-target="${axis}"]`)?.dataset.value || '');
   const ei = get('ei'), ns = get('ns'), ft = get('ft'), pj = get('pj');
-
   if(ei==='' && ns==='' && ft==='' && pj==='') return null;
 
   const pair = (v,a,b)=>{
@@ -293,24 +269,27 @@ function readMBTIProbs(){
 
   const xCount = [ei,ns,ft,pj].filter(v=>v==='X').length;
   const unset  = [ei,ns,ft,pj].filter(v=>v==='').length;
-
   return { prob:{...eiP, ...nsP, ...ftP, ...pjP}, meta:{xCount, unset} };
 }
 
-/* ---------- Progressive 问卷：逐题出现 ---------- */
+/* =========================================================
+   模块 D：Progressive 问卷（逐题滑入）
+   - 7 点小圆：整格热区；中点略大；选中后渲染下一题+滚动对焦
+   - 防重复渲染/防“重复下一题”
+   ========================================================= */
 function startProgressiveSurvey(){
   ANSWERS.clear();
   currentIndex = 0;
   const form = $('#surveyForm');
   if(form) form.innerHTML = '';
-  // 先隐藏提交按钮
+  // 提交按钮先隐藏
   const actions = $('#submitSurvey')?.closest('.actions');
   if(actions) actions.style.display = 'none';
-  // 渲染首题
+  // 首题
   renderOneItem(currentIndex);
 }
 
-/** 构建 7 点小圆（整格热区），仅返回容器 */
+/** 构建 7 点小圆控件（只返回容器） */
 function buildLikert7(name, onPick){
   const wrap = document.createElement('div');
   wrap.className = 'likert7';
@@ -343,7 +322,7 @@ function buildLikert7(name, onPick){
   return wrap;
 }
 
-/** 渲染单题（防重复渲染/防重复下一题） */
+/** 渲染单题（含防重复逻辑） */
 function renderOneItem(idx){
   const form = $('#surveyForm');
   if(!form) return;
@@ -354,6 +333,7 @@ function renderOneItem(idx){
     return;
   }
 
+  // 防重复：已存在就不再创建
   if(form.querySelector(`[data-q-idx="${idx}"]`)) return;
 
   const it = ITEMS[idx];
@@ -367,7 +347,7 @@ function renderOneItem(idx){
     <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
   `;
 
-  const scale = buildLikert7('q' + it.id, (raw)=>{
+  const scale = buildLikert7('q'+it.id, (raw)=>{
     ANSWERS.set(it.id, raw);
     if(node.getAttribute('data-next-spawned') !== '1'){
       node.setAttribute('data-next-spawned', '1');
@@ -375,7 +355,7 @@ function renderOneItem(idx){
       renderOneItem(nextIdx);
       const nextEl = form.querySelector(`[data-q-idx="${nextIdx}"]`);
       if(nextEl){
-        setTimeout(()=>{ nextEl.scrollIntoView({ behavior:'smooth', block:'center' }); }, 60);
+        setTimeout(()=>{ nextEl.scrollIntoView({behavior:'smooth', block:'center'}); }, 60);
       }
     }
   });
@@ -395,7 +375,12 @@ function readSurvey(){
   return {ok:true, answers: out};
 }
 
+/* =========================================================
+   模块 E：计分（带符号多维加权 + M 拆分 + L 的矛盾惩罚）
+   - 这里是你要调参时最常改动的地方
+   ========================================================= */
 
+/** 1) 基础各维得分（带符号多维加权） */
 function computeSurveyDims(answers){
   const acc = {
     A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
@@ -404,18 +389,17 @@ function computeSurveyDims(answers){
   };
   for(const it of ITEMS){
     const raw = answers[it.id];
-    const score = mapLikertToFive(raw); // 1..5
-    const baseW = (typeof it.w === 'number') ? it.w : 1.0;
+    const score = mapLikertToFive(raw);
+    const baseW = (typeof it.w==='number') ? it.w : 1.0;
 
-    // 通用累计器
-    function accOne(key, coef){
+    const accOne = (key, coef)=>{
       const c = Number(coef)||0;
       if(c===0) return;
       const w = Math.abs(baseW * c);
-      const signed = (c >= 0) ? score : (6 - score);
+      const signed = (c >= 0) ? score : (6 - score); // 反向映射
       acc[key].num += w * signed;
       acc[key].den += w;
-    }
+    };
 
     accOne('A', it.A);
     accOne('C', it.C);
@@ -426,10 +410,11 @@ function computeSurveyDims(answers){
     accOne('M_aff',  it.M_aff);
   }
 
-  const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
+  const avg = x => x.den > 0 ? (x.num/x.den) : 3.0;
   const m_func = clip(avg(acc.M_func));
   const m_aff  = clip(avg(acc.M_aff));
-  // 输出一个 M_s 供现有报告用（不丢信息：也把子分一并塞进 survey_raw 里）
+
+  // 展示用 M（不丢细节：在最终报告里同时输出子维）
   const M_s = Math.max(m_func, m_aff);
 
   return {
@@ -443,44 +428,22 @@ function computeSurveyDims(answers){
   };
 }
 
-
-  const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
-
-  return {
-    A_s: clip(avg(acc.A)),
-    C_s: clip(avg(acc.C)),
-    D_s: clip(avg(acc.D)),
-    S_s: clip(avg(acc.S)),
-    L_s: clip(avg(acc.L)),
-    M_func_s: clip(avg(acc.M_func)),
-    M_aff_s : clip(avg(acc.M_aff))
-  };
-}
-
-/* ---------- 自相矛盾/两极并存指数 → 注入 L（领域一致）惩罚 ---------- */
-/**
- * 思路：针对 A/C/D 三维，分别统计“正向条目均分”(pos) 与 “反向条目均分”(neg)。
- * 若 pos 与 neg 都明显 >3（同意区），说明同一维度上出现“同时赞同对立叙事”，
- * 这定义为两极并存（自相矛盾）信号。取三维的平均作为 ci∈[0,1]。
- * ci 越高，L 越低： L_adj = clip(L_s - 1.2 * ci, 1, 5)。
- */
+/** 2) 自相矛盾指数（A/C/D 的正反并存）→ 注入 L 的惩罚 */
 function computeAmbivalenceFromAnswers(answers){
-  const dims = ['A','C','D']; // 先聚焦 A/C/D 三维的自相矛盾
-  const agg = {};
-  dims.forEach(k=>{
-    agg[k] = {pos:{num:0,den:0}, neg:{num:0,den:0}};
-  });
+  const dims = ['A','C','D'];
+  const agg = {}; dims.forEach(k=> agg[k] = {pos:{num:0,den:0}, neg:{num:0,den:0}} );
 
   for(const it of ITEMS){
     const raw = answers[it.id];
-    const score = mapLikertToFive(raw); // 1..5
-    const w = (typeof it.w==='number'? it.w : 1.0);
+    const score = mapLikertToFive(raw);
+    const w = (typeof it.w==='number' ? it.w : 1.0);
+
     for(const k of dims){
-      const c = Number(it[k]) || 0;
-      if(c === 0) continue;
+      const c = Number(it[k])||0;
+      if(c===0) continue;
       const weightAbs = Math.abs(w * c);
-      const signed = (c >= 0) ? score : (6 - score); // 反向：1->5, 5->1
-      if(c >= 0){
+      const signed = (c>=0) ? score : (6 - score);
+      if(c>=0){
         agg[k].pos.num += weightAbs * signed;
         agg[k].pos.den += weightAbs;
       }else{
@@ -491,39 +454,32 @@ function computeAmbivalenceFromAnswers(answers){
   }
 
   const res = {};
-  let ambList = [];
+  const list = [];
   dims.forEach(k=>{
     const pos = agg[k].pos.den>0 ? (agg[k].pos.num/agg[k].pos.den) : 3.0;
     const neg = agg[k].neg.den>0 ? (agg[k].neg.num/agg[k].neg.den) : 3.0;
-    // 把“>3 的强同意”映射到 [0,1]，同时高才算矛盾：取二者较小
-    const posHi = Math.max(0, pos - 3) / 2; // 0..1
-    const negHi = Math.max(0, neg - 3) / 2; // 0..1
-    const amb   = Math.min(posHi, negHi);
+    const posHi = Math.max(0, pos - 3) / 2; // 把 >3 的同意强度映射到 [0,1]
+    const negHi = Math.max(0, neg - 3) / 2;
+    const amb   = Math.min(posHi, negHi);   // 两端同时高才算矛盾
     res[k] = {pos:+pos.toFixed(2), neg:+neg.toFixed(2), amb:+amb.toFixed(3)};
-    ambList.push(amb);
+    list.push(amb);
   });
 
-  // 还可加入“跨维冲突”项：C 与 D 同时很高的情形（可选）
-  // const cOverlap = Math.max(0, (computeSurveyDims(answers).C_s - 3)/2) *
-  //                  Math.max(0, (computeSurveyDims(answers).D_s - 3)/2);
-
-  const ciMicro = ambList.length ? (ambList.reduce((a,b)=>a+b,0) / ambList.length) : 0;
-  return { byDim: res, ci: +ciMicro.toFixed(3) };
+  const ci = list.length ? (list.reduce((a,b)=>a+b,0)/list.length) : 0;
+  return { byDim: res, ci: +ci.toFixed(3) };
 }
 
-
-/* ---------- MBTI 先验与融合 ---------- */
+/** 3) MBTI 先验与融合（A/C/D 三个维度） */
 function alphaFromMBTI(meta){
   if(!meta) return 0.0;
   const x = meta.xCount;
   let base = (x>=1) ? 0.20 : 0.30;
   let cert = 1.0;
-  if(x===1) cert = 0.67;
-  else if(x===2) cert = 0.50;
-  else if(x>=3) cert = 0.40;
+  if(x===1) cert=0.67;
+  else if(x===2) cert=0.50;
+  else if(x>=3) cert=0.40;
   return base * cert;
 }
-
 function priorsFromProbs(p){
   const {A0,C0,D0} = MBTI.baseline;
   const cA = MBTI.coeff.A, cC = MBTI.coeff.C, cD = MBTI.coeff.D;
@@ -533,23 +489,19 @@ function priorsFromProbs(p){
   let D = D0 + cD["N-S"]*dNS + cD["T-F"]*dTF + cD["P-J"]*dPJ + cD["F*J"]*(p.F*p.J) + cD["N*P"]*(p.N*p.P);
   return {A_p:clip(A), C_p:clip(C), D_p:clip(D)};
 }
-
 function fuse(prior, survey, alpha){ return alpha*prior + (1-alpha)*survey; }
 
-/* ---------- 总分与宏类型判读 ----------
- * - 动因 M 的展示：我们取 M = max(M_func_s, M_aff_s) 作为显示用强度；
- * - 但功能主义姿态（B3）的规则用 M_func_s（功能驱动强）触发。
- */
+/** 4) 汇总得分 + 宏类型判读 */
 function scoreAll(read){
   const mbti = readMBTIProbs();
   const dims = computeSurveyDims(read.answers);
 
-  // —— 自相矛盾指数（注入到 L）——
+  // L 的矛盾惩罚
   const amb = computeAmbivalenceFromAnswers(read.answers);
-  let L_adj = clip(dims.L_s - 1.2 * amb.ci, 1, 5); // 惩罚系数 1.2 可后续回归校正
+  const L_adj = clip(dims.L_s - 1.2 * amb.ci, 1, 5); // 惩罚系数可调
 
-  // —— 先验融合（仅 A/C/D）——
-  let A_final = dims.A_s, C_final = dims.C_s, D_final = dims.D_s;
+  // 融合先验（A/C/D）
+  let A_final=dims.A_s, C_final=dims.C_s, D_final=dims.D_s;
   let A_p=null, C_p=null, D_p=null, alpha=0.0;
   if(mbti){
     const pri = priorsFromProbs(mbti.prob);
@@ -560,19 +512,26 @@ function scoreAll(read){
     D_final = fuse(D_p, dims.D_s, alpha);
   }
 
+  // 动因展示：取大者，但保留子分（用于 B3 规则）
+  const M_func = dims.M_detail.m_func;
+  const M_aff  = dims.M_detail.m_aff;
+  const M_show = Math.max(M_func, M_aff);
+
   const report = {
     A: +A_final.toFixed(2),
     C: +C_final.toFixed(2),
     D: +D_final.toFixed(2),
-    M: +dims.M_s.toFixed(2),
+    M: +M_show.toFixed(2),
+    M_func: +M_func.toFixed(2),
+    M_aff : +M_aff.toFixed(2),
     S: +dims.S_s.toFixed(2),
-    L: +L_adj.toFixed(2),                 // 用“惩罚后的 L”
+    L: +L_adj.toFixed(2),
     prior: mbti ? {A_p, C_p, D_p, alpha:+alpha.toFixed(3)} : null,
-    survey_raw: {...dims, L_s_raw: dims.L_s}, // 额外保留“未惩罚 L”以便调参
-    ambivalence: amb                       // 输出矛盾诊断细节（便于迭代）
+    survey_raw: {...dims, L_s_raw: dims.L_s},
+    ambivalence: amb
   };
 
-  // —— 宏类型初判（加入 A 的过渡带分流）——
+  // 宏类型初判（含 A 的过渡带 2.5–3.0）
   const tLow = 2.5, tMid = 3.5;
   let macro = null;
 
@@ -591,10 +550,9 @@ function scoreAll(read){
   else if(report.A >= 3.0 && report.D <= tMid){
     if(report.C >= 4.0) macro = "B0 建构—高建构依赖";
     else if(report.C >= 3.0 && report.L <= 3.0) macro = "B1 建构—局部建构（候选）";
-    else if(report.C < 2.5 && report.M >= 3.5) macro = "B3 建构—功能主义姿态（候选）";
+    else if(report.C < 2.5 && report.M_func >= 3.5) macro = "B3 建构—功能主义姿态（候选）"; // B3 用功能驱动触发
     else macro = "B2 建构—透明虚构（候选）";
   }
-  // === 新增：A 的“过渡带”2.5–3.0 的细分 ===
   else if(report.A >= 2.5 && report.A < 3.0){
     if(report.D >= 3.6 && report.C <= 3.0){
       macro = "C-seed 去魅萌发（候选）";
@@ -612,59 +570,9 @@ function scoreAll(read){
   return report;
 }
 
-
-  // 展示用动因强度：取两者较大者；同时保留子分给判读
-  const M_func = dims.M_func_s;
-  const M_aff  = dims.M_aff_s;
-  const M_show = Math.max(M_func, M_aff);
-
-  const report = {
-    A: +A_final.toFixed(2),
-    C: +C_final.toFixed(2),
-    D: +D_final.toFixed(2),
-    M: +M_show.toFixed(2),         // 展示用
-    M_func: +M_func.toFixed(2),    // 供逻辑判读
-    M_aff : +M_aff.toFixed(2),     // 供逻辑判读
-    S: +dims.S_s.toFixed(2),
-    L: +dims.L_s.toFixed(2),
-    prior: mbti ? {A_p, C_p, D_p, alpha:+alpha.toFixed(3)} : null,
-    survey_raw: dims
-  };
-
-  // 宏类型粗判（与你之前规则一致，B3 用 M_func）
-  const tLow = 2.5, tMid = 3.5;
-  let macro = null;
-
-  if(report.A < tLow){
-    macro = (report.C >= 3.5) ? "A1 未触及—高依赖外部建构" : "A0 未触及—低觉察沉浸";
-  }else if(report.A >= tMid && report.D >= tMid){
-    if(report.S >= 4.0){
-      macro = "C2 去魅—彻底停滞/冻结（候选）";
-    }else if(report.C <= 3.0 && report.L <= 3.0){
-      macro = "C1 去魅—理想自由人（候选）";
-    }else{
-      macro = (report.C <= 2.5) ? "C0 去魅—“解”候选" : "C1/C2 去魅—待细分";
-    }
-    } else if (report.A >= 2.5 && report.A < 3.0) {
-  // —— A 过渡带的细分 —— 
-  if (report.D >= 3.6 && report.C <= 3.0) {
-    macro = "C-seed 去魅萌发（候选）";
-  } else if (report.C >= 3.8 && report.D <= 3.2) {
-    macro = (report.L <= 3.0) ? "B1 建构—局部建构（边界）" : "B0 建构—高建构依赖（边界）";
-  } else {
-    macro = "过渡带—待观察（默认 B2 候选）";
-  }
-} else {
-  macro = "B2 建构—透明虚构（候选）";
-}
-
-  }
-  report.macro_hint = macro;
-
-  return report;
-}
-
-/* ---------- 报告 ---------- */
+/* =========================================================
+   模块 F：报告渲染 & 下载
+   ========================================================= */
 function renderReport(res){
   $('#survey')?.classList.add('hidden');
   const wrap = $('#reportContent');
@@ -693,7 +601,6 @@ function renderReport(res){
   window.__meaningReport = res;
 }
 
-/* ---------- 下载 ---------- */
 function downloadJSON(){
   const data = window.__meaningReport || {};
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -704,9 +611,10 @@ function downloadJSON(){
   URL.revokeObjectURL(url);
 }
 
-/* ---------- 启动 ---------- */
+/* =========================================================
+   启动（先 loadAll 再 init，确保按钮已绑定且题库正确）
+   ========================================================= */
 window.addEventListener('DOMContentLoaded', async ()=>{
-  await loadAll(); // ← 现在会正确解析 weights，从而不再是“全 3 分”
+  await loadAll();   // ★ 解析 weights 的正确位置（不要把 await 写到顶层）
   init();
 });
-
