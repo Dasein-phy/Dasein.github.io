@@ -19,4 +19,7 @@
     "mid": 3.5
   },
   "conflict_delta": 1.0
+  
+  { "useCoreModel": true }
+
 }
