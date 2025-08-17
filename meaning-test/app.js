@@ -51,6 +51,236 @@ async function tryFetchJSON(path){
   }catch(e){ return null; }
 }
 
+/*******************************
+ * Core Model (R / J / E′) — 冷启动版
+ * 1) estimate_theta(answers, items): 估计 R/J/E′ 三轴 1..5 分
+ * 2) classify(theta, opts): 基于 R/J/E′ 的宏姿态 Top1/Top2 试判
+ *
+ * 说明：
+ * - 题库：建议使用 items.core.v1.json（上一条我给你的36题）
+ * - 反向计分：使用 weights 中的正负号；若 axis 写成 "E'"，会在内部映射为 Eprime
+ * - 这是“可用的底座”，后续用 IRT 校准后仅需替换该函数内部的加权规则
+ *******************************/
+
+/** 小工具 **/
+function _toFive(raw){ return mapLikertToFive(raw); } // 复用你已有函数
+function _rev(x){ return 6 - x; }                      // 1..5 的反向
+function _nz(x, alt=0){ return (typeof x === 'number' && !Number.isNaN(x)) ? x : alt; }
+function _clip15(x){ return clip(x, 1, 5); }           // 复用你已有 clip
+
+/** 将权重键 "E'" 统一映射为 "Eprime"（内部使用） */
+function _normAxisKey(k){
+  if(k === "E'") return 'Eprime';
+  if(k === 'Eprime') return 'Eprime';
+  if(k === 'R' || k === 'J') return k;
+  return null;
+}
+
+/**
+ * estimate_theta
+ * @param {Object} answers - 来自 readSurvey().answers 的 { [id]: 1..7 }
+ * @param {Array}  items   - 题库数组（items.core.v1.json）；每项可含：
+ *   - id, text, w(默认1)
+ *   - axis: ["R"] / ["J"] / ["E'"] 可选
+ *   - weights: { R?: number, J?: number, "E'": number }（正负决定正反向）
+ *   - polarity 可忽略（以 weights 正负为准）
+ * @returns {{
+ *   theta: {R:number,J:number,Eprime:number},
+ *   detail:{R:{num:number,den:number},J:{...},Eprime:{...}},
+ *   quality:{answered:number, expected:number, missing:number, missingRate:number}
+ * }}
+ */
+function estimate_theta(answers, items){
+  const acc = {
+    R:{num:0, den:0},
+    J:{num:0, den:0},
+    Eprime:{num:0, den:0}
+  };
+  let expected = 0, answered = 0;
+
+  for(const it of (items||[])){
+    const id = it.id;
+    if(id == null) continue;
+    expected++;
+
+    const raw = answers[id];
+    if(typeof raw !== 'number') continue; // 未作答
+    answered++;
+
+    const base = _toFive(raw);                 // 1..5
+    const w0   = (typeof it.w === 'number') ? it.w : 1.0;
+    const W    = it.weights || {};
+
+    // 支持多轴权重（通常只配一个）
+    for(const k in W){
+      const axis = _normAxisKey(k);
+      if(!axis) continue;
+
+      const c = _nz(W[k], 0);
+      if(c === 0) continue;
+
+      const weightAbs = Math.abs(c * w0);
+      const s = (c >= 0) ? base : _rev(base);  // 根据权重正负决定正反向
+      acc[axis].num += weightAbs * s;
+      acc[axis].den += weightAbs;
+    }
+  }
+
+  const avg = a => a.den > 0 ? (a.num / a.den) : 3.0;
+  const R = _clip15(avg(acc.R));
+  const J = _clip15(avg(acc.J));
+  const Eprime = _clip15(avg(acc.Eprime));
+
+  return {
+    theta: { R, J, Eprime },
+    detail: acc,
+    quality:{
+      answered,
+      expected,
+      missing: expected - answered,
+      missingRate: expected > 0 ? +(1 - answered/expected).toFixed(3) : 1
+    }
+  };
+}
+
+/**
+ * classify
+ * 说明：
+ * - 这是一个“启发式”打分器：把 (R,J,E′) 三个 1..5 轴映射为 15 个宏姿态的相对分数，
+ *   再 softmax 出概率，给出 Top1/Top2 与不确定性。
+ * - 后续一旦有数据/支线判别器，这里只需替换打分公式（接口保持不变）。
+ *
+ * @param {{R:number,J:number,Eprime:number}} theta
+ * @param {{temperature?:number, missingPenalty?:number}} opts
+ * @returns {{
+ *   probs: Record<string, number>,
+ *   top1: {label:string, p:number},
+ *   top2: {label:string, p:number},
+ *   entropy: number,
+ *   notes: string[]
+ * }}
+ */
+function classify(theta, opts={}){
+  const T = _nz(opts.temperature, 0.85);   // softmax 温度（越小越尖锐）
+  const penalMissing = _nz(opts.missingPenalty, 0); // 如需按答题率降权可在外层处理
+
+  const r = _clip15(theta.R), j = _clip15(theta.J), e = _clip15(theta.Eprime);
+
+  // 一些便捷量
+  const mid = 3.0;
+  const hi  = t => Math.max(0, t - mid);           // 高于3的部分
+  const lo  = t => Math.max(0, mid - t);           // 低于3的部分
+  const near = (t, w=2.0) => 1 - Math.min(1, Math.abs(t - mid)/w); // “接近3”的程度 0..1
+
+  // 宏姿态标签（按你最新命名）
+  const L = [
+    'A0 低觉察沉浸姿态',
+    'A1 外部建构依赖姿态',
+    'B0 高建构依赖姿态',
+    'B1 局部建构姿态',
+    'B2 透明虚构姿态',
+    'B3 功能主义姿态',
+    'C0 去建构姿态',
+    'C1 反身介入姿态',
+    'C2 停滞冻结姿态',
+    'C3 去魅萌发姿态',
+    'D0 审美姿态',
+    'D1 荒诞反抗姿态',
+    'E0 义务契约姿态',
+    'E1 享乐幸福姿态',
+    'F0 动态混合姿态'
+  ];
+
+  // —— 启发式原始打分（logit，未归一）——
+  // 说明：只用 R/J/E′ 近似，某些型（如 C2/D0/B3）可辨性弱，先给“保守得分”
+  const score = {};
+
+  // A0：低R + 低E′（不祛魅），J不过高
+  score[L[0]] = 1.2*lo(r) + 1.0*lo(e) + 0.3*near(j);
+
+  // A1：高J + 低E′ + R不高
+  score[L[1]] = 1.1*hi(j) + 0.9*lo(e) + 0.5*lo(r);
+
+  // B0：很高J + 中高R + 低E′
+  score[L[2]] = 1.2*hi(j) + 0.7*hi(r) + 0.6*lo(e);
+
+  // B1：高R + J接近中位 + E′接近中位（局部构、知其构而用）
+  score[L[3]] = 1.0*hi(r) + 0.7*near(j,1.5) + 0.6*near(e,1.2);
+
+  // B2：高R + 中高E′ + 低J（透明虚构）
+  score[L[4]] = 1.0*hi(r) + 0.9*hi(e) + 0.7*lo(j);
+
+  // B3：中高R + 中高J + E′接近中位（偏功能/流程取向；无M_func时仅近似）
+  score[L[5]] = 0.8*hi(r) + 0.8*hi(j) + 0.6*near(e,1.0);
+
+  // C0：高E′ + 低J（“去建构/解”倾向）
+  score[L[6]] = 1.1*hi(e) + 0.8*lo(j) + 0.3*near(r,1.4);
+
+  // C1：很高R + 高E′ + 低J（反身介入）
+  score[L[7]] = 1.1*hi(r) + 1.0*hi(e) + 0.7*lo(j);
+
+  // C2：高R+高E′ 但（缺S/M）保守给少量分；后续需行为/稳定度验证
+  score[L[8]] = Math.max(0, (hi(r)+hi(e) - 0.8)) * 0.6;
+
+  // C3：E′略高（3.3~3.7）+ R处于过渡带（2.6~3.4）
+  const eBand = Math.max(0, 1 - Math.abs(e - 3.5)/0.4); // 带宽0.8
+  const rBand = Math.max(0, 1 - Math.abs(r - 3.0)/0.6); // 带宽1.2
+  score[L[9]] = 0.9*eBand + 0.7*rBand + 0.2*lo(j);
+
+  // D0：低E′（承认非工具性的“内在分量”）+ R中位 + J低中
+  score[L[10]] = 1.0*lo(e) + 0.5*near(r,1.2) + 0.4*lo(j);
+
+  // D1：高E′ + 低J + R中高（荒诞反抗/不诉诸秩序）
+  score[L[11]] = 1.0*hi(e) + 0.8*lo(j) + 0.3*hi(r);
+
+  // E0：高J + E′中位 + R中高（契约/程序先行）
+  score[L[12]] = 1.0*hi(j) + 0.7*near(e,1.0) + 0.5*hi(r);
+
+  // E1：低J + 低E′ + R不高（享乐/幸福最大化）
+  score[L[13]] = 0.9*lo(j) + 0.9*lo(e) + 0.4*lo(r);
+
+  // F0：作为“混合/未定”蓄水池，按不确定性（靠近中间 & 打分分散）给基线分
+  const spread =
+    (near(r,2.0) + near(j,2.0) + near(e,2.0)) / 3; // 越靠中越高
+  score[L[14]] = 0.6*spread;
+
+  // —— softmax 概率化（附温度与缺答惩罚）——
+  const logits = L.map(lbl => score[lbl]);
+  const mx = Math.max.apply(null, logits);
+  const exps = logits.map(v => Math.exp((v - mx) / Math.max(0.2, T)));
+  let sum = exps.reduce((a,b)=>a+b,0);
+  if(sum <= 0) sum = 1;
+
+  // 缺答降权（可选）
+  const baseProbs = {};
+  L.forEach((lbl, i)=> baseProbs[lbl] = exps[i] / sum);
+
+  // —— 计算熵/Top2 —— 
+  const probsArr = L.map(lbl => ({label:lbl, p: baseProbs[lbl]}))
+                    .sort((a,b)=> b.p - a.p);
+  const top1 = probsArr[0];
+  const top2 = probsArr[1];
+
+  const entropy = -probsArr.reduce((h, x)=> h + (x.p>0 ? x.p*Math.log(x.p) : 0), 0);
+  const notes = [];
+
+  // 基本解释性提示
+  if(entropy > 2.0) notes.push('分布分散：不确定性较高（建议支线判别或延时重测）。');
+  if(top1 && top2 && (top1.p - top2.p) < 0.08) notes.push('Top1/Top2 接近：建议触发“对决式”支线。');
+  if (penalMissing > 0) notes.push('存在缺答降权：请注意作答完整性对结果的影响。');
+
+  return {
+    probs: baseProbs,
+    top1, top2,
+    entropy: +entropy.toFixed(3),
+    notes
+  };
+}
+
+const itemsCorePath = './items.core.v1.json';
+let CORE_ITEMS = null;
+
+
 /* =========================================================
    模块 A：加载全部配置和题库（★这是你以后要找“解析题库”的地方）
    - 正确解析 v2 的 weights 字段；v1 退化为 0 权重（可按需映射）
@@ -63,6 +293,16 @@ async function loadAll(){
   ]);
   CFG  = cfg;
   MBTI = prior;
+
+if (CFG && CFG.useCoreModel) {
+  CORE_ITEMS = await tryFetchJSON(itemsCorePath);
+  if (!Array.isArray(CORE_ITEMS) || !CORE_ITEMS.length) {
+    console.warn('Core items missing; fallback to baseline');
+    CFG.useCoreModel = false;
+  }
+}
+
+
 
   // ---- v2 优先（你当前提供的是 v2）----
   const v2 = await tryFetchJSON(itemsPathV2);
@@ -611,6 +851,19 @@ function scoreAll(read){
     C_final = fuse(C_p, dims.C_s, alpha);
     D_final = fuse(D_p, dims.D_s, alpha);
   }
+ if (CFG && CFG.useCoreModel && Array.isArray(CORE_ITEMS) && CORE_ITEMS.length){
+  const est = estimate_theta(read.answers, CORE_ITEMS);
+  const cls = classify(est.theta, { temperature: 0.85 });
+
+  // 你可以先简单打印，或写一个轻量报告渲染器 renderReportCore(est, cls)
+  console.log('theta:', est.theta, 'quality:', est.quality);
+  console.log('macro:', cls.top1, 'runnerup:', cls.top2, 'entropy:', cls.entropy, cls.notes);
+
+  // 临时：沿用你的报告面板，展示三轴与Top1/Top2（你已有 renderReport，可另写 renderReportCore）
+  // renderReportCore(est, cls);
+  return;
+}
+// 否则走你现有的 A/C/D 管线
 
   // 动因子：展示用 M 取更大者，同时保留子维
   const M_func = (dims.M_detail?.m_func ?? dims.M_s);
