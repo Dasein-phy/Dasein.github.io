@@ -490,43 +490,134 @@ function alphaFromMBTI(meta){
   else if(x>=3) cert=0.40;
   return base * cert;
 }
+// —— MBTI 先验：安全取系数 + D 维收缩（更保守） ——
 function priorsFromProbs(p){
   const {A0,C0,D0} = MBTI.baseline;
-  const cA = MBTI.coeff.A, cC = MBTI.coeff.C, cD = MBTI.coeff.D;
-  const dNS = (p.N - p.S), dIE = (p.I - p.E), dPJ = (p.P - p.J), dTF = (p.T - p.F);
-  let A = A0 + cA["N-S"]*dNS + cA["I-E"]*dIE + cA["P-J"]*dPJ + cA["N*T"]*(p.N*p.T) + cA["S*J"]*(p.S*p.J);
-  let C = C0 + cC["J-P"]*(p.J - p.P) + cC["F-T"]*(p.F - p.T) + cC["S-N"]*(p.S - p.N) + cC["I-E"]*dIE + cC["S*J"]*(p.S*p.J);
-  let D = D0 + cD["N-S"]*dNS + cD["T-F"]*dTF + cD["P-J"]*dPJ + cD["F*J"]*(p.F*p.J) + cD["N*P"]*(p.N*p.P);
-  return {A_p:clip(A), C_p:clip(C), D_p:clip(D)};
+  const cA = MBTI.coeff.A || {};
+  const cC = MBTI.coeff.C || {};
+  const cD = MBTI.coeff.D || {};
+  const g = (o,k) => Number(o?.[k] ?? 0);
+
+  const dNS = (p.N - p.S);
+  const dIE = (p.I - p.E);
+  const dPJ = (p.P - p.J);
+  const dTF = (p.T - p.F);
+
+  let A = A0
+    + g(cA,"N-S")*dNS + g(cA,"I-E")*dIE + g(cA,"P-J")*dPJ
+    + g(cA,"N*T")*(p.N*p.T) + g(cA,"S*J")*(p.S*p.J);
+
+  let C = C0
+    + g(cC,"J-P")*(p.J - p.P) + g(cC,"F-T")*(p.F - p.T) + g(cC,"S-N")*(p.S - p.N)
+    + g(cC,"I-E")*dIE + g(cC,"S*J")*(p.S*p.J);
+
+  // D 的整体先验强度收敛为 50%（相关性最弱）
+  let D = D0 + 0.5 * (
+      g(cD,"N-S")*dNS + g(cD,"T-F")*dTF + g(cD,"P-J")*dPJ
+    + g(cD,"F*J")*(p.F*p.J) + g(cD,"N*P")*(p.N*p.P)
+  );
+
+  return { A_p: clip(A), C_p: clip(C), D_p: clip(D) };
 }
+
 function fuse(prior, survey, alpha){ return alpha*prior + (1-alpha)*survey; }
 
-/** 4) 汇总得分 + 宏类型判读 */
+// —— 注意力题（81/82）：未通过则禁用 MBTI 先验 ——
+function checkAttention(answers){
+  const a81 = answers[81]; // “请选择非常不同意” → 1
+  const a82 = answers[82]; // “请选择非常同意”   → 7
+  let ok = true, reason = [];
+  if (typeof a81 === 'number' && a81 !== 1){ ok = false; reason.push('Q81≠非常不同意'); }
+  if (typeof a82 === 'number' && a82 !== 7){ ok = false; reason.push('Q82≠非常同意'); }
+  return { ok, reason };
+}
+
+// —— 计算 α：填写完整度 × X惩罚 ×（问卷不可靠度）× 矛盾噪声 ——
+// mbtiMeta: {xCount, unset} 来自 readMBTIProbs()
+// dims: computeSurveyDims() 的返回（含 S_s / L_s）
+// L_adj: L 经矛盾惩罚后的值
+// amb: computeAmbivalenceFromAnswers().ci  ∈[0,1]
+// attentionOK: 注意力是否通过
+function computeAlpha(mbtiMeta, dims, L_adj, amb, attentionOK){
+  if(!mbtiMeta || !attentionOK) return 0.0;
+
+  const fill = (4 - Math.min(4, mbtiMeta.unset||0)) / 4;      // MBTI 填写完整度 0..1
+  const xpen = [1, 0.67, 0.50, 0.40][Math.min(3, mbtiMeta.xCount||0)]; // X 越多 → α 越低
+  const reliability = Math.max(0, Math.min(1, ( (dims.S_s||3) + (L_adj||3) ) / 10 )); // 稳定+一致
+  const noisiness  = 0.5 + 0.5 * Math.max(0, Math.min(1, amb||0));     // 矛盾越高 → 越依赖先验
+  const alpha_max  = 0.25; // 顶帽（更保守）
+
+  let alpha = alpha_max * fill * xpen * (1 - 0.6*reliability) * noisiness;
+  return Math.max(0, Math.min(0.3, alpha)); // 再保险夹住
+}
+
+
+// —— 15类宏姿态：判别器 ——
+// 返回 { macro, reason }；阈值可随数据迭代微调
+function classifyMacro(r){
+  const A=r.A, C=r.C, D=r.D, S=r.S, L=r.L, M=r.M, Mf=r.M_func, Ma=r.M_aff;
+
+  // 优先判“极端/高置信”模式（从强到弱）
+  if (A>=3.5 && D>=3.8 && S<=2.8 && M<=3.0) return {macro:"C2 停滞冻结姿态", reason:"A高D高S低M低"};
+  if (A>=3.6 && D>=3.4 && C<=3.2 && S>=3.0) return {macro:"C1 反身介入姿态", reason:"高反身低依附"};
+  if (D>=3.5 && C<=2.7 && (Math.max(Mf,Ma)<=3.2)) return {macro:"C0 去建构姿态", reason:"高去魅低建构"};
+  if (A>=2.5 && A<3.0 && D>=3.6 && C<=3.0)  return {macro:"C3 去魅萌发姿态", reason:"A过渡带且D高C低"};
+
+  if (Mf>=3.8 && D<=3.4 && C>=3.0)          return {macro:"B3 功能主义姿态", reason:"功能驱动高"};
+  if (Mf>=3.8 && C>=3.5 && S>=3.5 && D<=3.2)return {macro:"E0 义务契约姿态", reason:"责任/契约信号"};
+  if (Ma>=3.8 && C<=3.2 && D<=3.4)          return {macro:"E1 享乐幸福姿态", reason:"情感/幸福驱动"};
+
+  if (D>=3.8 && C<=3.2 && A>=3.2)           return {macro:"D1 荒诞反抗姿态", reason:"高去魅+能动"};
+  if (Ma>=3.8 && D>=3.2 && D<=3.8 && C>=2.6 && C<=3.6)
+                                             return {macro:"D0 审美姿态", reason:"高感受+中度去魅"};
+
+  if (C>=4.0 || (C>=3.8 && S>=3.5 && D<=3.2)) return {macro:"B0 高建构依赖姿态", reason:"建构依赖高"};
+  if (C>=3.2 && L<=3.0)                       return {macro:"B1 局部建构姿态", reason:"建构依赖且跨域不一致"};
+  if (A>=3.0 && C>=3.0 && D>=3.0)             return {macro:"B2 透明虚构姿态", reason:"自知其构而仍用"};
+
+  if (A<2.5 && C>=3.5)                        return {macro:"A1 外部建构依赖姿态", reason:"低觉察+高依附"};
+  if (A<2.5)                                   return {macro:"A0 低觉察沉浸姿态",   reason:"低觉察"};
+
+  // 低稳定+低一致：倾向“动态混合”
+  if (S<=2.6 && L<=2.8)                       return {macro:"F0 动态混合姿态", reason:"低稳定且低一致"};
+
+  return {macro:"F0 动态混合姿态", reason:"多信号并存/边界"};
+}
+
+// —— 总分 & 报告 ——（融合改良 α + 15 类输出）
 function scoreAll(read){
   const mbti = readMBTIProbs();
   const dims = computeSurveyDims(read.answers);
 
-  // L 的矛盾惩罚
-  const amb = computeAmbivalenceFromAnswers(read.answers);
-  const L_adj = clip(dims.L_s - 1.2 * amb.ci, 1, 5); // 惩罚系数可调
+  // 自相矛盾 → 惩罚 L
+  const amb  = computeAmbivalenceFromAnswers(read.answers);
+  const L_adj = clip(dims.L_s - 1.2 * (amb.ci||0), 1, 5);
 
-  // 融合先验（A/C/D）
-  let A_final=dims.A_s, C_final=dims.C_s, D_final=dims.D_s;
+  // 注意力题
+  const att = checkAttention(read.answers);
+
+  // MBTI 融合（仅 A/C/D）
+  let A_final = dims.A_s, C_final = dims.C_s, D_final = dims.D_s;
   let A_p=null, C_p=null, D_p=null, alpha=0.0;
+
   if(mbti){
-    const pri = priorsFromProbs(mbti.prob);
+    const pri  = priorsFromProbs(mbti.prob);
     A_p = pri.A_p; C_p = pri.C_p; D_p = pri.D_p;
-    alpha = alphaFromMBTI(mbti.meta);
+    alpha = computeAlpha(mbti.meta, dims, L_adj, amb.ci, att.ok);
+
+    // 注意：D 的先验已在 priorsFromProbs() 收敛 50%，此处同权融合即可
+    const fuse = (prior, survey, a) => a*prior + (1-a)*survey;
     A_final = fuse(A_p, dims.A_s, alpha);
     C_final = fuse(C_p, dims.C_s, alpha);
     D_final = fuse(D_p, dims.D_s, alpha);
   }
 
-  // 动因展示：取大者，但保留子分（用于 B3 规则）
-  const M_func = dims.M_detail.m_func;
-  const M_aff  = dims.M_detail.m_aff;
+  // 动因子：展示用 M 取更大者，同时保留子维
+  const M_func = (dims.M_detail?.m_func ?? dims.M_s);
+  const M_aff  = (dims.M_detail?.m_aff  ?? dims.M_s);
   const M_show = Math.max(M_func, M_aff);
 
+  // 汇总（四舍五入只用于展示）
   const report = {
     A: +A_final.toFixed(2),
     C: +C_final.toFixed(2),
@@ -537,48 +628,20 @@ function scoreAll(read){
     S: +dims.S_s.toFixed(2),
     L: +L_adj.toFixed(2),
     prior: mbti ? {A_p, C_p, D_p, alpha:+alpha.toFixed(3)} : null,
-    survey_raw: {...dims, L_s_raw: dims.L_s},
-    ambivalence: amb
+    attention_ok: att.ok,
+    attention_reason: att.reason,
+    ambivalence: amb,
+    survey_raw: {...dims, L_s_raw: dims.L_s}
   };
 
-  // 宏类型初判（含 A 的过渡带 2.5–3.0）
-  const tLow = 2.5, tMid = 3.5;
-  let macro = null;
+  // 15 类宏姿态
+  const pick = classifyMacro(report);
+  report.macro_hint = pick.macro;
+  report.macro_reason = pick.reason;
 
-  if(report.A < tLow){
-    macro = (report.C >= 3.5) ? "A1 未触及—高依赖外部建构" : "A0 未触及—低觉察沉浸";
-  }
-  else if(report.A >= tMid && report.D >= tMid){
-    if(report.S >= 4.0){
-      macro = "C2 去魅—彻底停滞/冻结（候选）";
-    }else if(report.C <= 3.0 && report.L <= 3.0){
-      macro = "C1 去魅—理想自由人（候选）";
-    }else{
-      macro = (report.C <= 2.5) ? "C0 去魅—“解”候选" : "C1/C2 去魅—待细分";
-    }
-  }
-  else if(report.A >= 3.0 && report.D <= tMid){
-    if(report.C >= 4.0) macro = "B0 建构—高建构依赖";
-    else if(report.C >= 3.0 && report.L <= 3.0) macro = "B1 建构—局部建构（候选）";
-    else if(report.C < 2.5 && report.M_func >= 3.5) macro = "B3 建构—功能主义姿态（候选）"; // B3 用功能驱动触发
-    else macro = "B2 建构—透明虚构（候选）";
-  }
-  else if(report.A >= 2.5 && report.A < 3.0){
-    if(report.D >= 3.6 && report.C <= 3.0){
-      macro = "C-seed 去魅萌发（候选）";
-    }else if(report.C >= 3.8 && report.D <= 3.2){
-      macro = (report.L <= 3.0) ? "B1 建构—局部建构（边界）" : "B0 建构—高建构依赖（边界）";
-    }else{
-      macro = "过渡带—待观察（默认 B2 候选）";
-    }
-  }
-  else{
-    macro = "B2 建构—透明虚构（候选）";
-  }
-
-  report.macro_hint = macro;
   return report;
 }
+
 
 /* =========================================================
    模块 F：报告渲染 & 下载
@@ -593,23 +656,44 @@ function renderReport(res){
     <li>觉察 A：${res.A}</li>
     <li>建构依赖 C：${res.C}</li>
     <li>去魅 D：${res.D}</li>
-    <li>动因模式 M：${res.M} <span style="color:#888">(功能 ${res.M_func} / 情感 ${res.M_aff})</span></li>
+    <li>动因模式 M：${res.M} <span style="color:#888">(功能 ${res.M_func ?? '—'} / 情感 ${res.M_aff ?? '—'})</span></li>
     <li>姿态稳定 S：${res.S}</li>
     <li>领域一致 L：${res.L}</li>
   </ul>`);
+
   if(res.prior){
-    const dA = Math.abs(res.prior.A_p - res.survey_raw.A_s).toFixed(2);
-    const dC = Math.abs(res.prior.C_p - res.survey_raw.C_s).toFixed(2);
-    const dD = Math.abs(res.prior.D_p - res.survey_raw.D_s).toFixed(2);
+    const dA = Math.abs(res.prior.A_p - (res.survey_raw?.A_s ?? res.A)).toFixed(2);
+    const dC = Math.abs(res.prior.C_p - (res.survey_raw?.C_s ?? res.C)).toFixed(2);
+    const dD = Math.abs(res.prior.D_p - (res.survey_raw?.D_s ?? res.D)).toFixed(2);
     lines.push(`<p>先验影响系数 α=${res.prior.alpha}；先验-问卷差值 |ΔA|=${dA} |ΔC|=${dC} |ΔD|=${dD}</p>`);
+
+    const attText = (res.attention_ok === false)
+      ? '未通过（已将先验影响压到接近 0）'
+      : (res.attention_ok === true ? '通过' : '—');
+    const ci = (res.ambivalence && typeof res.ambivalence.ci === 'number')
+      ? res.ambivalence.ci.toFixed(3) : '—';
+
+    lines.push(
+      `<p style="color:#6b7280">
+        透明说明：注意力检查：${attText}；矛盾指数 ci=${ci}。
+        <br><small>注：为避免过度拉动，“去魅 D”的 MBTI 先验仅以 <code>0.5×</code> 的力度参与融合。</small>
+      </p>`
+    );
   }else{
     lines.push(`<p>未使用 MBTI 先验。</p>`);
   }
-  lines.push(`<p>宏类型初判：<span class="badge">${res.macro_hint}</span></p>`);
+
+  lines.push(
+    `<p>宏类型初判：<span class="badge">${res.macro_hint}</span>${
+      res.macro_reason ? ` <span style="color:#888">（依据：${res.macro_reason}）</span>` : ''
+    }</p>`
+  );
+
   wrap.innerHTML = lines.join('\n');
   $('#report')?.classList.remove('hidden');
   window.__meaningReport = res;
 }
+
 
 function downloadJSON(){
   const data = window.__meaningReport || {};
