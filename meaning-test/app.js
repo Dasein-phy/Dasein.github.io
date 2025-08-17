@@ -694,6 +694,263 @@ function renderReport(res){
   window.__meaningReport = res;
 }
 
+/* ================== 支线测试：全局、加载、启动、计分、渲染 ================== */
+
+/** 资源路径 */
+const branchBankPath = './items.branch.v1.json';
+
+/** 支线题库：按宏类型分桶 */
+let BRANCH_BANK = null;   // 原始文件对象
+let BRANCH_ITEMS = [];    // 当前支线要出的题（已归一化）
+const BRANCH_ANSWERS = new Map();
+
+/** 宏类型短名（右上角小字） */
+const MACRO_SHORT = {
+  A0:'低觉察沉浸姿态', A1:'外部建构依赖姿态',
+  B0:'高建构依赖姿态', B1:'局部建构姿态', B2:'透明虚构姿态', B3:'功能主义姿态',
+  C0:'去建构姿态', C1:'反身介入姿态', C2:'停滞冻结姿态', C3:'去魅萌发姿态',
+  D0:'审美姿态', D1:'荒诞反抗姿态',
+  E0:'义务契约姿态', E1:'享乐幸福姿态',
+  F0:'动态混合姿态'
+};
+
+/** 复用你的 normalizeItem（保证 weights → 统一内部字段） */
+function normalizeItemBranch(node){
+  const w = node.weights || {};
+  return {
+    id   : node.id,
+    text : node.text || node.stem || ('Q' + node.id),
+    w    : (typeof node.w === 'number' ? node.w : 1.0),
+    A    : +w.A || 0, C: +w.C || 0, D: +w.D || 0,
+    S    : +w.S || 0, L: +w.L || 0,
+    M_func: +w.M_func || 0, M_aff: +w.M_aff || 0
+  };
+}
+
+/** 加载支线题库（容错三种格式） */
+async function loadBranchBank(){
+  const bank = await tryFetchJSON(branchBankPath);
+  if(!bank){ BRANCH_BANK = {}; return; }
+
+  // 1) { branches: {B3:{label,items:[]}, ...} }
+  if(bank.branches && typeof bank.branches === 'object'){
+    BRANCH_BANK = bank.branches;
+    return;
+  }
+  // 2) { B3:[...], D0:[...] } 或 { B3:{label,items:[...]}, ...}
+  if(!Array.isArray(bank) && typeof bank === 'object'){
+    BRANCH_BANK = bank;
+    return;
+  }
+  // 3) [ {...}, {...} ] → 通用题库
+  if(Array.isArray(bank)){
+    BRANCH_BANK = { default: { label:'通用支线', items: bank } };
+    return;
+  }
+  BRANCH_BANK = {};
+}
+
+/** 根据宏类型取一套题 */
+function resolveBranchSet(macroCode){
+  if(!BRANCH_BANK) return null;
+  // 兼容多种存储写法
+  const bucket = BRANCH_BANK[macroCode]
+              || (BRANCH_BANK.default ?? null);
+  if(!bucket) return null;
+
+  // 可能是数组，也可能是 {label, items}
+  const items = Array.isArray(bucket) ? bucket : (bucket.items || []);
+  const label = (Array.isArray(bucket) ? MACRO_SHORT[macroCode] : (bucket.label || MACRO_SHORT[macroCode] || '支线'));
+
+  return {
+    label,
+    items: items.map(normalizeItemBranch)
+  };
+}
+
+/** 复用一套“逐题渲染”逻辑（支线用自己的容器/答案表） */
+function startBranchSurvey(){
+  BRANCH_ANSWERS.clear();
+  const form = document.querySelector('#branchForm');
+  if(form) form.innerHTML = '';
+  // 隐藏支线提交按钮，等最后一题出现后再显示
+  const actions = document.querySelector('#submitBranch')?.closest('.actions');
+  if(actions) actions.style.display = 'none';
+  // 渲染第一题
+  renderOneItemBranch(0);
+}
+
+function renderOneItemBranch(idx){
+  const form = document.querySelector('#branchForm');
+  if(!form) return;
+
+  if(idx >= BRANCH_ITEMS.length){
+    const actions = document.querySelector('#submitBranch')?.closest('.actions');
+    if(actions) actions.style.display = 'flex';
+    return;
+  }
+  if(form.querySelector(`[data-bq-idx="${idx}"]`)) return;
+
+  const it = BRANCH_ITEMS[idx];
+  const node = document.createElement('div');
+  node.className = 'item card slide-in';
+  node.setAttribute('data-bqid', it.id);
+  node.setAttribute('data-bq-idx', idx);
+  node.innerHTML = `
+    <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)}</h3>
+    <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
+  `;
+
+  const scale = buildLikert7('bq' + it.id, (raw)=>{
+    BRANCH_ANSWERS.set(it.id, raw);
+    if(node.getAttribute('data-next-spawned') !== '1'){
+      node.setAttribute('data-next-spawned', '1');
+      const nextIdx = idx + 1;
+      renderOneItemBranch(nextIdx);
+      const nextEl = form.querySelector(`[data-bq-idx="${nextIdx}"]`);
+      if(nextEl){
+        setTimeout(()=>{ nextEl.scrollIntoView({ behavior:'smooth', block:'center' }); }, 60);
+      }
+    }
+  });
+  node.appendChild(scale);
+  form.appendChild(node);
+}
+
+/** 复用你基线的计分方法：改成“可传入题集 + 答案表” */
+function computeDimsFor(items, answers){
+  const acc = {
+    A:{num:0, den:0}, C:{num:0, den:0}, D:{num:0, den:0},
+    S:{num:0, den:0}, L:{num:0, den:0},
+    M_func:{num:0, den:0}, M_aff:{num:0, den:0}
+  };
+  for(const it of items){
+    const raw = answers.get(it.id);
+    if(typeof raw !== 'number') continue;
+    const score = mapLikertToFive(raw);
+    const baseW = (typeof it.w === 'number') ? it.w : 1.0;
+
+    const accOne = (key, coef)=>{
+      const c = Number(coef)||0;
+      if(c===0) return;
+      const w = Math.abs(baseW * c);
+      const signed = (c >= 0) ? score : (6 - score);
+      acc[key].num += w * signed;
+      acc[key].den += w;
+    };
+    accOne('A', it.A); accOne('C', it.C); accOne('D', it.D);
+    accOne('S', it.S); accOne('L', it.L);
+    accOne('M_func', it.M_func); accOne('M_aff', it.M_aff);
+  }
+  const avg = x => x.den > 0 ? (x.num / x.den) : 3.0;
+  const m_func = clip(avg(acc.M_func));
+  const m_aff  = clip(avg(acc.M_aff));
+  return {
+    A: clip(avg(acc.A)), C: clip(avg(acc.C)), D: clip(avg(acc.D)),
+    S: clip(avg(acc.S)), L: clip(avg(acc.L)),
+    M: Math.max(m_func, m_aff), M_func: m_func, M_aff: m_aff
+  };
+}
+
+/** 支线提交：做个简要汇总展示 */
+function submitBranch(){
+  if(BRANCH_ANSWERS.size < BRANCH_ITEMS.length){
+    alert('还有题未作答。');
+    return;
+  }
+  const dims = computeDimsFor(BRANCH_ITEMS, BRANCH_ANSWERS);
+  const box = document.querySelector('#branchResult');
+  if(box){
+    box.innerHTML = `
+      <p><strong>支线六维（局部）</strong></p>
+      <ul>
+        <li>A：${dims.A.toFixed(2)}</li>
+        <li>C：${dims.C.toFixed(2)}</li>
+        <li>D：${dims.D.toFixed(2)}</li>
+        <li>M：${dims.M.toFixed(2)} <span style="color:#888">(功能 ${dims.M_func.toFixed(2)} / 情感 ${dims.M_aff.toFixed(2)})</span></li>
+        <li>S：${dims.S.toFixed(2)}</li>
+        <li>L：${dims.L.toFixed(2)}</li>
+      </ul>
+      <p style="color:#6b7280">提示：支线用于细化你在「${document.querySelector('#branchMacroLabel')?.textContent||'—'}」中的侧面，不改变基线宏类型。</p>
+    `;
+  }
+}
+
+/** 从报告进入支线 */
+async function goToBranch(){
+  // 读取宏类型：优先 code，其次从 hint 里截 code
+  const res = window.__meaningReport || {};
+  let code = res.macro_code;
+  if(!code && typeof res.macro_hint === 'string'){
+    code = res.macro_hint.split(/\s+/)[0]; // 例如 "B3 功能主义姿态"
+  }
+  if(!code){
+    alert('未找到宏类型结果，无法进入支线。');
+    return;
+  }
+
+  // 确保题库加载
+  if(BRANCH_BANK === null){
+    await loadBranchBank();
+  }
+  const pack = resolveBranchSet(code);
+  if(!pack || !pack.items || !pack.items.length){
+    alert(`支线题库未就绪或该类型（${code}）未配置。请稍后再试。`);
+    return;
+  }
+
+  // 设置显示用标签
+  const lab = document.querySelector('#branchMacroLabel');
+  if(lab) lab.textContent = (pack.label || MACRO_SHORT[code] || code);
+
+  // 准备题目并启动
+  BRANCH_ITEMS = pack.items.slice(); // 浅拷贝
+  // 简单打散（可用 ?seed=xxx 控制）
+  const seed = (new URL(location.href)).searchParams.get('seed') || 'mt-branch';
+  (function shuffleSeeded(arr, s){
+    let h = 2166136261;
+    for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    for(let i=arr.length-1;i>0;i--){
+      h ^= (h<<13); h ^= (h>>>7); h ^= (h<<17);
+      const j = Math.abs(h) % (i+1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  })(BRANCH_ITEMS, seed + '-' + code);
+
+  // 切页
+  document.querySelector('#report')?.classList.add('hidden');
+  const br = document.querySelector('#branch');
+  if(br){
+    br.classList.remove('hidden');
+    document.querySelector('#branchResult').innerHTML = '';
+  }
+  startBranchSurvey();
+}
+
+/* ===== 绑定按钮（在你现有 init() 之后不会冲突） ===== */
+(function bindBranchButtons(){
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // 报告页的 “进入支线问卷”
+    const toBranch = document.querySelector('#toBranch');
+    if(toBranch){
+      toBranch.addEventListener('click', goToBranch);
+    }
+    // 支线提交
+    const submitBranchBtn = document.querySelector('#submitBranch');
+    if(submitBranchBtn){
+      submitBranchBtn.addEventListener('click', submitBranch);
+    }
+    // 返回结果
+    const backBtn = document.querySelector('#backToReport');
+    if(backBtn){
+      backBtn.addEventListener('click', ()=>{
+        document.querySelector('#branch')?.classList.add('hidden');
+        document.querySelector('#report')?.classList.remove('hidden');
+        document.querySelector('#branchForm').innerHTML = '';
+      });
+    }
+  });
+})();
 
 function downloadJSON(){
   const data = window.__meaningReport || {};
