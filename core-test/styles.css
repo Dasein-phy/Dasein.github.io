@@ -1,0 +1,9 @@
+/* 复用主样式 */
+@import url("../meaning-test/styles.css");
+
+/* 可选：核心模式的小提示样式 */
+.mt-app .core-badge {
+  display:inline-block; padding:2px 8px; border-radius:10px;
+  font-size:12px; background:#eef6ff; color:#2563eb; margin-left:8px;
+}
+.mt-app .small-muted{ color:#6b7280; font-size:12px; }
