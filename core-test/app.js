@@ -10,6 +10,7 @@ let CFG = null;
 let ITEMS = [];
 /** 答案：Map<id, raw(1..7)> */
 const ANSWERS = new Map();
+let DATA_READY = false;
 
 /* ---------- DOM 快捷 ---------- */
 const $  = (sel, root=document) => root.querySelector(sel);
@@ -21,13 +22,31 @@ const clip = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
 const escapeHTML = s => String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 
 /* ---------- 加载 ---------- */
+async function fetchJSON(path){
+  const r = await fetch(path, { cache: 'no-store' });
+  if(!r.ok){
+    throw new Error(`加载失败：${path} [${r.status}]`);
+  }
+  return r.json();
+}
+
 async function loadAll(){
-  const [cfg, items] = await Promise.all([
-    fetch(cfgPath).then(r=>r.json()),
-    fetch(itemsPath).then(r=>r.json())
-  ]);
-  CFG = cfg; ITEMS = Array.isArray(items)? items : [];
-  if(!ITEMS.length) throw new Error('核心题库加载失败');
+  try{
+    const [cfg, items] = await Promise.all([
+      fetchJSON(cfgPath),
+      fetchJSON(itemsPath)
+    ]);
+    CFG = cfg; ITEMS = Array.isArray(items) ? items : [];
+    if(!ITEMS.length) throw new Error('题库为空');
+    DATA_READY = true;
+    // 启用“进入问卷”按钮
+    const btnToSurvey = $('#toSurvey');
+    if(btnToSurvey) btnToSurvey.disabled = false;
+  }catch(err){
+    console.error(err);
+    alert('题库加载失败：请确认 /core-test/app.config.json 与 /core-test/items.core.v1.json 存在且可被访问。\n\n控制台有详细错误信息。');
+    DATA_READY = false;
+  }
 }
 
 /* ---------- 初始化入口 ---------- */
@@ -37,6 +56,9 @@ function init(){
   const btnSubmit  = $('#submitSurvey');
   const btnDownload= $('#download');
   const btnRestart = $('#restart');
+
+  // 进入问卷按钮先禁用，待题库加载后启用
+  if(btnToSurvey) btnToSurvey.disabled = true;
 
   if(btnStart){
     btnStart.addEventListener('click', ()=>{
@@ -48,6 +70,10 @@ function init(){
 
   if(btnToSurvey){
     btnToSurvey.addEventListener('click', ()=>{
+      if(!DATA_READY){
+        alert('题库尚未加载完成，请稍候片刻再进入。');
+        return;
+      }
       $('#mbti')?.classList.add('hidden');
       $('#survey')?.classList.remove('hidden');
       startProgressiveSurvey();
@@ -105,6 +131,10 @@ function initMBTIDropdowns(){
 
 /* ---------- Progressive 问卷 ---------- */
 function startProgressiveSurvey(){
+  if(!DATA_READY || !ITEMS.length){
+    alert('题库未就绪，无法开始问卷。');
+    return;
+  }
   ANSWERS.clear();
   const form = $('#surveyForm');
   if(form) form.innerHTML = '';
@@ -197,7 +227,6 @@ function readSurvey(){
 }
 
 /* ---------- 核心：估计 θ 与分类 ---------- */
-/** 估计三轴：R/J/E_raw，再做 E′ 残差化 */
 function estimate_theta(answers){
   const acc = {
     R:{num:0, den:0}, J:{num:0, den:0}, E:{num:0, den:0}
@@ -227,7 +256,6 @@ function estimate_theta(answers){
   const R = clip(avg(acc.R)), J = clip(avg(acc.J));
   const E_raw = clip(avg(acc.E));
 
-  // E′ 残差化：E′ = 3 + ((E_raw-3) - beta*(R-3))
   const beta = (CFG?.core?.beta_RE ?? 0.5);
   const E_p = clip( 3 + ((E_raw-3) - beta*(R-3)) );
 
@@ -237,7 +265,6 @@ function estimate_theta(answers){
   };
 }
 
-/** 用原型距离做 Top1/Top2（仅 A0/A1/B0/B1/B2/C0/C1/C2/C3） */
 function classify(theta){
   const proto = CFG?.core?.proto || {};
   const p = CFG?.core?.distance_pow ?? 2;
@@ -250,7 +277,6 @@ function classify(theta){
   const scores = [];
   for(const k of Object.keys(proto)){
     const d = dist(v, proto[k]);
-    // 距离 → 相似度（反向），简单做 1/(1+d)
     const sim = 1/(1+d);
     scores.push({macro:k, proto:proto[k], d:+d.toFixed(3), sim:+sim.toFixed(4)});
   }
@@ -262,11 +288,9 @@ function classify(theta){
 function scoreCore(answers){
   const th = estimate_theta(answers);
   const cls = classify(th);
-  // 为保持旧 UI 字段名：把 R/J/E′ 映射到 A/C/D
-  const A = th.R, C = th.J, D = th.E_p;
   const report = {
-    A, C, D,
-    M: null, S: null, L: null,  // 核心版不估
+    A: th.R, C: th.J, D: th.E_p,
+    M: null, S: null, L: null,
     core: { R:th.R, J:th.J, E_prime:th.E_p, E_raw:th.E_raw },
     classify: cls,
     survey_raw: th.diag
@@ -297,7 +321,7 @@ function renderReport(res){
     <li>Top2：${t2?.macro || '—'}${t2?`（相似度 ${t2.sim}，距离 ${t2.d}）`:''}</li>
   </ul>`);
 
-  lines.push(`<p class="small-muted">提示：本核心版本仅依据 R/J/E′ 做粗分；完整 15 类需要扩展量表（动因、稳定、一致等）与数据校准。</p>`);
+  lines.push(`<p class="small-muted">提示：本核心版本仅依据 R/J/E′ 做粗分；完整 15 类需要扩展量表与数据校准。</p>`);
 
   wrap.innerHTML = lines.join('\n');
   $('#report')?.classList.remove('hidden');
@@ -316,7 +340,9 @@ function downloadJSON(){
 }
 
 /* ---------- 启动 ---------- */
-window.addEventListener('DOMContentLoaded', async ()=>{
-  await loadAll();
+window.addEventListener('DOMContentLoaded', ()=>{
+  // 先绑事件，保证“开始测试”一定可用
   init();
+  // 再异步加载配置与题库
+  loadAll();
 });
