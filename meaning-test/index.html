@@ -110,11 +110,22 @@ permalink: /meaning-test/
         <h2>结果</h2>
         <div id="reportContent"></div>
         <div class="actions">
-          <button id="download" class="btn">下载 JSON</button>
-          <button id="restart" class="btn">重新开始</button>
+          <button id="toBranch" class="btn primary">进入支线问卷</button>
         </div>
       </section>
-    </main>
+
+<!-- ===== 支线测试（与基线一模一样的交互） ===== -->
+
+      <section id="branch" class="card hidden">
+        <h2>支线测试 <span class="meta" id="branchMacroLabel">—</span></h2>
+        <form id="branchForm"></form>
+        <div class="actions">
+          <button id="submitBranch" class="btn primary">提交支线</button>
+          <button id="backToReport" class="btn">返回结果</button>
+        </div>
+        <div id="branchResult" style="margin-top:12px;"></div>
+      </section>
+
 
     <footer class="mt-footer">
       <p>© 意义姿态测试 · 仅供学术探索使用</p>
