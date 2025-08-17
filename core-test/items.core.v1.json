@@ -1,0 +1,46 @@
+[
+  {"id":1,"text":"工作中做关键决策前，我会写清自己的假设，并主动寻找反证。","domain":"work","axis":"R","polarity":"pos","w":1,"weights":{"R":0.9}},
+  {"id":2,"text":"面对重要任务，我很少追问自己为何这样做，按惯性推进即可。","domain":"work","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.8}},
+  {"id":3,"text":"遇到团队流行观点，我会先查证来源再表态。","domain":"work","axis":"R","polarity":"pos","w":1,"weights":{"R":0.8}},
+  {"id":4,"text":"我不太在意动机或偏见如何影响我的判断。","domain":"work","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.9}},
+
+  {"id":5,"text":"家庭争执后，我会回看自己的期待设定是否不合理。","domain":"family","axis":"R","polarity":"pos","w":1,"weights":{"R":0.8}},
+  {"id":6,"text":"家里有分歧时，我更多靠情绪当场反应，事后很少复盘。","domain":"family","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.8}},
+  {"id":7,"text":"我能意识到自己投射（把内心想法套在他人身上）并尝试修正。","domain":"family","axis":"R","polarity":"pos","w":1,"weights":{"R":0.9}},
+  {"id":8,"text":"我不关注“我的叙事”如何影响我对家人的评价。","domain":"family","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.8}},
+
+  {"id":9,"text":"公共事件里，我会区分事实、观点与价值立场。","domain":"public","axis":"R","polarity":"pos","w":1,"weights":{"R":0.8}},
+  {"id":10,"text":"我经常顺着情绪转发未经证实的信息。","domain":"public","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.8}},
+  {"id":11,"text":"当自己观点改变时，我会标注原因（新证据/新框架等）。","domain":"public","axis":"R","polarity":"pos","w":1,"weights":{"R":0.8}},
+  {"id":12,"text":"对“为何改变想法”这件事，我并不关心。","domain":"public","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.9}},
+
+  {"id":13,"text":"我会定期记录让我强烈焦虑或兴奋的触发点并追因。","domain":"self","axis":"R","polarity":"pos","w":1,"weights":{"R":0.9}},
+  {"id":14,"text":"我不太在意我的想法从何而来、为何变化。","domain":"self","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.8}},
+  {"id":15,"text":"我能识别并命名自己的思维偏差（如确认偏误、归因错误）。","domain":"self","axis":"R","polarity":"pos","w":1,"weights":{"R":0.8}},
+  {"id":16,"text":"我很少质疑“我现在相信的东西”为何会成立。","domain":"self","axis":"R","polarity":"neg","w":1,"weights":{"R":-0.9}},
+
+  {"id":17,"text":"规则与制度提供正当性：当它们与直觉冲突时，应优先规则。","domain":"work","axis":"J","polarity":"pos","w":1,"weights":{"J":0.9}},
+  {"id":18,"text":"即便规定明确，我仍倾向跟随个人判断与经验。","domain":"work","axis":"J","polarity":"neg","w":1,"weights":{"J":-0.9}},
+  {"id":19,"text":"对同一问题，我更信赖权威流程而非“各自为政”的做法。","domain":"work","axis":"J","polarity":"pos","w":1,"weights":{"J":0.8}},
+  {"id":20,"text":"即使程序合法，若与我的价值冲突，我会优先从价值出发。","domain":"work","axis":"J","polarity":"neg","w":1,"weights":{"J":-0.8}},
+
+  {"id":21,"text":"家务/照护等角色义务会优先于我的临时兴趣。","domain":"family","axis":"J","polarity":"pos","w":1,"weights":{"J":0.8}},
+  {"id":22,"text":"家庭决策更应尊重个人感受，而非既定角色与礼俗。","domain":"family","axis":"J","polarity":"neg","w":1,"weights":{"J":-0.8}},
+  {"id":23,"text":"长辈/家族传统构成重要的正当化来源。","domain":"family","axis":"J","polarity":"pos","w":1,"weights":{"J":0.9}},
+  {"id":24,"text":"家族名分与礼法对我并不构成优先约束。","domain":"family","axis":"J","polarity":"neg","w":1,"weights":{"J":-0.9}},
+
+  {"id":25,"text":"公共事务应尊重制度安排而非个人“良心裁量”。","domain":"public","axis":"J","polarity":"pos","w":1,"weights":{"J":0.8}},
+  {"id":26,"text":"只要目的正当，突破既有规章是可以接受的。","domain":"public","axis":"J","polarity":"neg","w":1,"weights":{"J":-0.8}},
+  {"id":27,"text":"共同体身份（国家/宗教/社群）能为行动提供终极正当化。","domain":"public","axis":"J","polarity":"pos","w":1,"weights":{"J":0.9}},
+  {"id":28,"text":"我更相信个体经验而不是共同体规范提供的意义。","domain":"public","axis":"J","polarity":"neg","w":1,"weights":{"J":-0.9}},
+
+  {"id":29,"text":"我倾向承认“世界无终极意义”，更关注可验证的具体问题。","domain":"work","axis":"E","polarity":"pos","w":1,"weights":{"E":0.9}},
+  {"id":30,"text":"面对“终极意义”，我宁可接受一个安慰性的答案。","domain":"work","axis":"E","polarity":"neg","w":1,"weights":{"E":-0.8}},
+  {"id":31,"text":"我会主动拆解宏大叙事，把它还原为可检验的假设。","domain":"public","axis":"E","polarity":"pos","w":1,"weights":{"E":0.8}},
+  {"id":32,"text":"我宁愿保留“整体的意义”，不愿把它拆散为工具性片段。","domain":"public","axis":"E","polarity":"neg","w":1,"weights":{"E":-0.9}},
+
+  {"id":33,"text":"在亲密关系里，我能承认没有“唯一正确的意义”，而努力协商现实。","domain":"family","axis":"E","polarity":"pos","w":1,"weights":{"E":0.8}},
+  {"id":34,"text":"我希望关系能提供一种“最终目的感”，否则难以安心。","domain":"family","axis":"E","polarity":"neg","w":1,"weights":{"E":-0.8}},
+  {"id":35,"text":"自我层面，我更愿面对“不确定/无终极”的处境。","domain":"self","axis":"E","polarity":"pos","w":1,"weights":{"E":0.9}},
+  {"id":36,"text":"没有某种“终极价值”兜底，我会感到失去意义感。","domain":"self","axis":"E","polarity":"neg","w":1,"weights":{"E":-0.9}}
+]
