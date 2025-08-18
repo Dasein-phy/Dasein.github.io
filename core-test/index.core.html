@@ -1,27 +1,60 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <title>意义姿态 · 核心模型（Core）</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- 复用你的站点样式 -->
-  <link rel="stylesheet" href="../styles.css" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>意义姿态 • 核心模型（Core）</title>
+  <!-- 使用 core-test 下的样式，保证就近加载 -->
+  <link rel="stylesheet" href="./styles.css"/>
+  <style>
+    .page-wrap{max-width:980px;margin:24px auto;padding:0 16px;}
+    .hidden{display:none!important;}
+    .subtitle{color:#888;font-size:.95rem;margin-left:8px;}
+    .badge-macro{display:inline-block;padding:.25rem .5rem;border-radius:6px;background:#f4f6ff;color:#3b5bdb;}
+    .hint{color:#888;font-size:.9rem;}
+  </style>
 </head>
 <body>
-  <div class="container"></div>
+  <div class="page-wrap">
+    <h1>意义姿态 • 核心模型（Core）<span class="subtitle">R/J/E′ 三轴</span></h1>
 
-  <!-- 统一 UI 脚手架：生成 #intro / #survey / #report -->
-  <script src="../shared/ui.scaffold.js"></script>
-  <script>
-    mountStandardTestUI({
-      title: '意义姿态 · 核心模型（Core）',
-      subtitle: 'R / J / E′ 三轴量表',
-      intro: '36 题，逐题出现；完成后显示 Top1/Top2 候选与置信区间。',
-      homeHref: '../index.html'
-    });
-  </script>
+    <!-- Intro -->
+    <section id="core-intro" class="card">
+      <h3>开始</h3>
+      <p class="hint">本路径只测 <b>R/J/E′</b> 三轴核心量表，完成后给出 Top1/Top2 宏姿态候选（带置信提示）。</p>
+      <div class="actions">
+        <button id="coreStartBtn" class="btn btn-primary">开始核心测试</button>
+      </div>
+    </section>
 
-  <!-- Core 量表逻辑（使用与基线一致的交互：逐题出现/自动滚动等） -->
+    <!-- Survey -->
+    <section id="core-survey" class="hidden">
+      <div class="card">
+        <div class="flex-row" style="justify-content:space-between;align-items:center;">
+          <div><b id="coreProgress">0 / 36</b></div>
+          <div class="hint">量表：1=非常不同意 ··· 5=非常同意</div>
+        </div>
+      </div>
+
+      <form id="coreSurveyForm"></form>
+
+      <div class="card actions" style="display:none" id="coreSubmitWrap">
+        <button id="coreSubmitBtn" class="btn btn-primary">生成结果</button>
+      </div>
+    </section>
+
+    <!-- Report -->
+    <section id="core-report" class="hidden">
+      <div class="card">
+        <h3>结果</h3>
+        <div id="coreReportContent"></div>
+      </div>
+      <div class="card actions">
+        <button id="coreRestartBtn" class="btn">重新开始</button>
+      </div>
+    </section>
+  </div>
+
   <script src="./app.core.js"></script>
 </body>
 </html>
