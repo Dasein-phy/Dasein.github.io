@@ -98,19 +98,18 @@ function startSurveyCore(){
 function renderOneCore(idx){
   const form = $('#surveyForm'); if(!form) return;
 
-  // 结束：显示提交
   if(idx >= CORE_ITEMS.length){
     const actions = $('#submitSurvey')?.closest('.actions');
     if(actions) actions.style.display = 'flex';
     return;
   }
 
-  // 已经画过就不重复
   if(form.querySelector(`[data-q-idx="${idx}"]`)) return;
 
   const it = CORE_ITEMS[idx];
   const node = document.createElement('div');
-  node.className = 'item slide-in';                 // 不再给每题套小卡片，和基线一致
+  // 关键：给每道题加上 card，使之成为“小卡片”
+  node.className = 'item card slide-in';
   node.setAttribute('data-q-idx', idx);
   node.innerHTML = `
     <h3 class="q-title">Q${idx+1}. ${esc(it.text)}</h3>
@@ -119,18 +118,17 @@ function renderOneCore(idx){
 
   const likert = buildLikert7('q_'+it.id, (raw)=>{
     CORE_ANS.set(it.id, raw);
-    // 渲染下一题
     renderOneCore(idx+1);
-    // 平滑滚动到下一题中心
     setTimeout(()=>{
-      const nxt = document.querySelector(`[data-q-idx="${idx+1}"]`);
-      nxt?.scrollIntoView({ behavior:'smooth', block:'center' });
+      document.querySelector(`[data-q-idx="${idx+1}"]`)
+        ?.scrollIntoView({ behavior:'smooth', block:'center' });
     }, 20);
   });
 
   node.querySelector('.q-options').appendChild(likert);
   form.appendChild(node);
 }
+
 
 function readSurveyCore(){
   if(CORE_ANS.size < CORE_ITEMS.length) return { ok:false, answers:null };
