@@ -1,60 +1,85 @@
-/* ===== Core 模型 app.core.js（UI 由 /shared/ui.scaffold.js 提供） ===== */
+/* ===== Core Test app.core.js (R/J/E′) ===== */
 
-const CORE_CFG_PATH = './app.core.config.json';
-
-let CORE_CFG = null;      // {itemsPath, beta_RE, prototypes:[{id,label,center}] ...}
-let CORE_ITEMS = [];      // [{id,text,domain?,weights:{R,J,E}, w?}, ...]
-const CORE_ANSWERS = new Map();
-
-const $ = (sel, root=document) => root.querySelector(sel);
+/* ---------- DOM Helpers ---------- */
+const $  = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-/* ---------- 小工具 ---------- */
-function mapLikertToFive(raw){ return 1 + (raw - 1) * (4/6); } // 1..7 → 1..5
-function clip(x, lo=1, hi=5){ return Math.max(lo, Math.min(hi, x)); }
+/* ---------- State ---------- */
+let CORE_CFG = null;
+let CORE_ITEMS = [];      // [{id,text,domain,weights:{R,J,E}, w?}, ...]
+const ANSWERS = new Map();// id -> raw(1..7)
+let currentIndex = 0;
+
+/* ---------- Utils ---------- */
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const clip  = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
+const map7  = raw => (CORE_CFG?.core?.scale?.likert7_map || [1,1.67,2.33,3,3.67,4.33,5])[raw-1] || 3;
 function escapeHTML(s){
   return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 }
-
-/* ---------- 加载 ---------- */
-async function fetchJSON(path){
+async function loadJSON(path){
   const r = await fetch(path);
   if(!r.ok) throw new Error('fetch fail: ' + path);
-  return r.json();
+  return await r.json();
 }
 
-async function loadCore(){
-  CORE_CFG = await fetchJSON(CORE_CFG_PATH);
-  const itemsPath = CORE_CFG.itemsPath || './items.core.v1.json';
-  CORE_ITEMS = await fetchJSON(itemsPath);
+/* ---------- Load ---------- */
+async function loadAll(){
+  const cfgPath   = window.__CORE_CFG_PATH   || './app.core.config.json';
+  const itemsPath = window.__CORE_ITEMS_PATH || './items.core.v1.json';
+  CORE_CFG   = await loadJSON(cfgPath);
+  CORE_ITEMS = await loadJSON(itemsPath);
 
-  // 规范化
-  CORE_ITEMS = CORE_ITEMS.map(n=>{
-    const w = n.weights || {};
-    return {
-      id: n.id,
-      text: n.text || ('Q' + n.id),
-      domain: n.domain || null,
-      w: (typeof n.w === 'number' ? n.w : 1.0),
-      R: +w.R || 0,
-      J: +w.J || 0,
-      E: +w.E || 0
-    };
-  });
+  // 允许整体打乱（可传 ?seed=xxx）
+  const seed = (new URL(location.href)).searchParams.get('seed') || '';
+  if(seed){
+    CORE_ITEMS = seededShuffle(CORE_ITEMS, seed);
+  }
+}
+function seededShuffle(arr, s){
+  let h = 2166136261;
+  for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const out = arr.slice();
+  for(let i=out.length-1;i>0;i--){
+    h ^= (h<<13); h ^= (h>>>7); h ^= (h<<17);
+    const j = Math.abs(h) % (i+1);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
-/* ---------- Progressive 问卷 ---------- */
-function startCoreSurvey(){
-  CORE_ANSWERS.clear();
+/* ---------- UI Init ---------- */
+function init(){
+  const btnStart   = $('#startBtn');
+  const btnSubmit  = $('#submitSurvey');
+
+  if(btnStart){
+    btnStart.addEventListener('click', ()=>{
+      $('#intro')?.classList.add('hidden');
+      $('#survey')?.classList.remove('hidden');
+      startSurvey();
+    });
+  }
+  if(btnSubmit){
+    btnSubmit.addEventListener('click', ()=>{
+      const read = readSurvey();
+      if(!read.ok){ alert('还有题未作答。'); return; }
+      const est  = estimate_theta(read.answers);
+      const cls  = classify(est);
+      renderReport(est, cls);
+    });
+  }
+}
+
+/* ---------- Progressive Survey ---------- */
+function startSurvey(){
+  ANSWERS.clear();
+  currentIndex = 0;
   const form = $('#surveyForm');
   if(form) form.innerHTML = '';
-
-  // 隐藏提交按钮条
   const actions = $('#submitSurvey')?.closest('.actions');
   if(actions) actions.style.display = 'none';
-
-  // 逐题渲染
-  renderOneItem(0);
+  renderOneItem(currentIndex);
 }
 
 function buildLikert7(name, onPick){
@@ -65,9 +90,7 @@ function buildLikert7(name, onPick){
     opt.className = 'likert-option' + (v===4 ? ' is-center':'');
 
     const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = name;
-    input.value = String(v);
+    input.type = 'radio'; input.name = name; input.value = String(v);
 
     const dot = document.createElement('span');
     dot.className = 'likert-dot';
@@ -96,7 +119,6 @@ function renderOneItem(idx){
     if(actions) actions.style.display = 'flex';
     return;
   }
-
   if(form.querySelector(`[data-q-idx="${idx}"]`)) return;
 
   const it = CORE_ITEMS[idx];
@@ -105,144 +127,173 @@ function renderOneItem(idx){
   node.setAttribute('data-qid', it.id);
   node.setAttribute('data-q-idx', idx);
 
+  const dom = it.domain ? `<span class="badge">${escapeHTML(it.domain)}</span>` : '';
   node.innerHTML = `
-    <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)}</h3>
+    <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)} ${dom}</h3>
     <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
   `;
 
   const scale = buildLikert7('q' + it.id, (raw)=>{
-    CORE_ANSWERS.set(it.id, raw);
+    ANSWERS.set(it.id, raw);
     if(node.getAttribute('data-next-spawned') !== '1'){
-      node.setAttribute('data-next-spawned','1');
+      node.setAttribute('data-next-spawned', '1');
       const nextIdx = idx + 1;
       renderOneItem(nextIdx);
       const nextEl = form.querySelector(`[data-q-idx="${nextIdx}"]`);
       if(nextEl){
-        setTimeout(()=> nextEl.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
+        setTimeout(()=> nextEl.scrollIntoView({behavior:'smooth', block:'center'}), 60);
       }
     }
   });
-
   node.appendChild(scale);
   form.appendChild(node);
 }
 
-function readCoreSurvey(){
-  if(CORE_ANSWERS.size < CORE_ITEMS.length) return {ok:false};
+function readSurvey(){
+  if(ANSWERS.size < CORE_ITEMS.length) return {ok:false};
   const out = {};
   for(const it of CORE_ITEMS){
-    const raw = CORE_ANSWERS.get(it.id);
-    if(typeof raw !== 'number') return {ok:false};
-    out[it.id] = raw;
+    const v = ANSWERS.get(it.id);
+    if(typeof v !== 'number') return {ok:false};
+    out[it.id] = v;
   }
   return {ok:true, answers: out};
 }
 
-/* ---------- 估计 R/J/E & E′ ---------- */
-function estimate_theta_core(answers){
-  // 按权重与正反向聚合
+/* ---------- Core Estimation ---------- */
+/**
+ * estimate_theta(answers) -> { R, J, E, E_prime, byDomain:{...}, qc:{...} }
+ * 简化版：按题目 weights 线性加权→域均值→全局均值；E′ = E - beta*R
+ */
+function estimate_theta(answers){
+  const norms = CORE_CFG?.core?.norms || {};
+  const beta  = typeof norms.beta_RE === 'number' ? norms.beta_RE : 0.6;
+
+  // 累积器
   const acc = { R:{num:0,den:0}, J:{num:0,den:0}, E:{num:0,den:0} };
+  const domainAcc = {};
+
   for(const it of CORE_ITEMS){
     const raw = answers[it.id];
-    const score = mapLikertToFive(raw); // 1..5
-    const baseW = (typeof it.w === 'number') ? it.w : 1.0;
+    const score = map7(raw); // 1..5
+    const w = (typeof it.w === 'number') ? it.w : 1.0;
 
-    [['R',it.R],['J',it.J],['E',it.E]].forEach(([k,coef])=>{
-      const c = Number(coef)||0;
-      if(c === 0) return;
-      const w = Math.abs(baseW * c);
-      const signed = (c >= 0) ? score : (6 - score);  // 反向题：1↔5
-      acc[k].num += w * signed;
-      acc[k].den += w;
-    });
+    const ws = it.weights || {};
+    for(const k of ['R','J','E']){
+      const c = +ws[k] || 0;
+      if(c===0) continue;
+      const weightAbs = Math.abs(w * c);
+      const signed    = (c >= 0) ? score : (6 - score);
+      acc[k].num += weightAbs * signed;
+      acc[k].den += weightAbs;
+
+      const d = it.domain || 'GEN';
+      domainAcc[d] = domainAcc[d] || {R:{num:0,den:0},J:{num:0,den:0},E:{num:0,den:0}};
+      domainAcc[d][k].num += weightAbs * signed;
+      domainAcc[d][k].den += weightAbs;
+    }
   }
 
   const avg = x => x.den>0 ? (x.num/x.den) : 3.0;
-  const R = clip(avg(acc.R));
-  const J = clip(avg(acc.J));
-  const E = clip(avg(acc.E));
+  const R = clip(avg(acc.R)), J = clip(avg(acc.J)), E = clip(avg(acc.E));
+  const E_prime = clip(E - beta * (R - 3) - 0 + 3); // 把回归扣除后的残差平移回 1..5 近似
 
-  // 残差 E′ = E - beta*R （由配置给出 beta_RE）
-  const beta = (CORE_CFG && typeof CORE_CFG.beta_RE === 'number') ? CORE_CFG.beta_RE : 0.65;
-  const E_resid = clip(E - beta * (R - 3) - (3 - beta*0)); // 以 3 为中心的近似校正
-  // 上式做一个中心化近似：让 R=3 时 E′≈E；R 偏高时适度扣减
+  const byDomain = {};
+  Object.keys(domainAcc).forEach(d=>{
+    byDomain[d] = {
+      R: clip(avg(domainAcc[d].R)),
+      J: clip(avg(domainAcc[d].J)),
+      E: clip(avg(domainAcc[d].E))
+    };
+  });
 
-  return { R:+R.toFixed(2), J:+J.toFixed(2), E:+E.toFixed(2), E_resid:+E_resid.toFixed(2) };
+  // 简单质量指标（可扩展）
+  const qc = {
+    answered: ANSWERS.size,
+    total: CORE_ITEMS.length
+  };
+
+  return { R:+R.toFixed(2), J:+J.toFixed(2), E:+E.toFixed(2), E_prime:+E_prime.toFixed(2), byDomain, qc };
 }
 
-/* ---------- 原型判别 ---------- */
-function classify_core(theta){
-  // 欧氏距离 + softmax 相似度
-  const centers = (CORE_CFG && Array.isArray(CORE_CFG.prototypes)) ? CORE_CFG.prototypes : [];
-  const rows = centers.map(p=>{
-    const dx = (theta.R - p.center.R);
-    const dy = (theta.J - p.center.J);
-    const dz = ((theta.E_resid ?? theta.E) - (p.center.E_resid ?? p.center.E));
-    const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
-    return { id:p.id, label:p.label||p.id, dist:d };
-  }).sort((a,b)=> a.dist - b.dist);
+/* ---------- Classification ---------- */
+/**
+ * classify(est) -> { top1, top2, ranks:[...], entropy, gap }
+ */
+function classify(est){
+  const models = CORE_CFG?.models || [];
+  if(!models.length) return { ranks:[], entropy:null, gap:null };
 
-  // 相似度（越近越大）：sim = exp(-0.5 * d^2)
-  const sims = rows.map(r=>Math.exp(-0.5 * r.dist * r.dist));
-  const sum = sims.reduce((a,b)=>a+b,0) || 1;
-  rows.forEach((r,i)=> r.sim = +(sims[i]/sum).toFixed(4));
+  // 以 E′ 参与
+  const P = { R: est.R, J: est.J, E: est.E_prime };
+  const sigma = 1.0;
 
-  return rows;
+  const withDist = models.map(m=>{
+    const C = m.centroid || {};
+    const d2 = Math.pow(P.R-(C.R||3),2) + Math.pow(P.J-(C.J||3),2) + Math.pow(P.E-(C.E||3),2);
+    const dist = Math.sqrt(d2);
+    const sim = Math.exp(-d2/(2*sigma*sigma));
+    return { macro:m.macro, label:m.label, dist: +dist.toFixed(3), sim: +sim.toFixed(4) };
+  }).sort((a,b)=> b.sim - a.sim);
+
+  // softmax 概率
+  const logits = withDist.map(x=>x.sim);
+  const Z = logits.reduce((a,b)=>a+b,0) || 1;
+  const probs = logits.map(x=>x/Z);
+  const entropy = -probs.reduce((s,p)=> s + (p>0? p*Math.log(p):0), 0);
+
+  // gap（Top1-Top2）
+  const gap = (withDist[0]?.sim || 0) - (withDist[1]?.sim || 0);
+
+  return {
+    top1: withDist[0],
+    top2: withDist[1],
+    ranks: withDist,
+    entropy: +entropy.toFixed(3),
+    gap: +gap.toFixed(4)
+  };
 }
 
-/* ---------- 报告 ---------- */
-function renderCoreReport(theta, ranks){
+/* ---------- Report ---------- */
+function renderReport(est, cls){
   $('#survey')?.classList.add('hidden');
   const wrap = $('#reportContent');
   if(!wrap) return;
 
-  const topN = ranks.slice(0,3);
   const lines = [];
   lines.push(`<p><strong>核心三轴（1–5）</strong></p>`);
   lines.push(`<ul>
-    <li>反身/觉察 R：${theta.R}</li>
-    <li>外部正当化 J：${theta.J}</li>
-    <li>去魅残差 E′：${theta.E_resid} <span style="color:#888">(原始 E=${theta.E})</span></li>
+    <li>反身/觉察 R：${est.R}</li>
+    <li>外部正当化 J：${est.J}</li>
+    <li>去魅残差 E′：${est.E_prime} <span style="color:#888">(原始E=${est.E})</span></li>
   </ul>`);
 
-  lines.push(`<p><strong>宏姿态候选</strong></p>`);
-  lines.push(`<ol>` + topN.map(r=>(
-    `<li>${r.label} <span style="color:#888">（相似度 ${r.sim}，距离 ${r.dist.toFixed(3)}）</span></li>`
-  )).join('') + `</ol>`);
+  if(cls?.top1){
+    lines.push(`<p><strong>宏姿态候选</strong></p>`);
+    lines.push(`<ul>
+      <li>Top1：${cls.top1.macro}（${cls.top1.label}）<span style="color:#888"> 相似度 ${cls.top1.sim}，距离 ${cls.top1.dist}</span></li>
+      <li>Top2：${cls.top2.macro}（${cls.top2.label}）<span style="color:#888"> 相似度 ${cls.top2.sim}，距离 ${cls.top2.dist}</span></li>
+      <li>分布熵：${cls.entropy}；Top1–Top2 差距：${cls.gap}</li>
+    </ul>`);
+  }
+
+  // 域分布
+  if(est.byDomain && Object.keys(est.byDomain).length){
+    lines.push(`<p><strong>按域分布</strong></p>`);
+    const seg = Object.entries(est.byDomain).map(([d,v])=>`${d}: R=${v.R} J=${v.J} E=${v.E}`).join(' | ');
+    lines.push(`<p>${seg}</p>`);
+  }
 
   wrap.innerHTML = lines.join('\n');
   $('#report')?.classList.remove('hidden');
-  window.__coreReport = { theta, ranks };
+  window.__coreResult = { est, cls };
 }
 
-/* ---------- 入口 ---------- */
-function initCoreUI(){
-  const btnStart   = $('#startBtn');
-  const btnSubmit  = $('#submitSurvey');
-
-  if(btnStart){
-    btnStart.addEventListener('click', ()=>{
-      $('#intro')?.classList.add('hidden');
-      $('#survey')?.classList.remove('hidden');
-      startCoreSurvey();
-    });
-  }
-
-  if(btnSubmit){
-    btnSubmit.addEventListener('click', ()=>{
-      const read = readCoreSurvey();
-      if(!read.ok){ alert('还有题未作答。'); return; }
-      const theta = estimate_theta_core(read.answers);
-      const ranks = classify_core(theta);
-      renderCoreReport(theta, ranks);
-    });
-  }
-}
-
+/* ---------- Boot ---------- */
 window.addEventListener('DOMContentLoaded', async ()=>{
   try{
-    await loadCore();
-    initCoreUI();
+    await loadAll();
+    init();
   }catch(e){
     console.error(e);
     alert('Core 加载失败：' + e.message);
