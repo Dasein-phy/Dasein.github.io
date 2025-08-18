@@ -1,32 +1,251 @@
-/* 复用主样式 */
-@import url("../meaning-test/styles.css");
+/* ===== 意义姿态测试样式（scoped 到 .mt-app） ===== */
 
-/* 可选：核心模式的小提示样式 */
-.mt-app .core-badge {
-  display:inline-block; padding:2px 8px; border-radius:10px;
-  font-size:12px; background:#eef6ff; color:#2563eb; margin-left:8px;
+/* ---------- 主题色（方便全站后续复用） ---------- */
+:root{
+  --mt-fg:#1a1a1a;
+  --mt-muted:#666;
+  --mt-brand:#718771;     /* 主品牌绿 */
+  --mt-accent:#FFD9A3;    /* 强调色（选中外圈） */
+  --mt-secondary:#73AE52; /* 次强调绿（备用） */
+  --mt-radius:16px;
 }
-.mt-app .small-muted{ color:#6b7280; font-size:12px; }
 
-.fc3 .stem { margin-bottom: .75rem; line-height: 1.6; }
-.fc3-options { display: grid; grid-template-columns: 1fr; gap: .5rem; }
-.fc3-opt {
-  border: 1px solid var(--border, #ddd);
-  background: #fff;
-  padding: .6rem .8rem;
-  border-radius: .6rem;
-  text-align: left;
-  cursor: pointer;
+/* 选中项小绿描边 */
+.mt-app .mbti-menu li.is-active{ border-color: var(--mt-secondary); }
+
+/* ---------- 基础 ---------- */
+.mt-app *{ box-sizing:border-box; }
+.mt-app{ color:var(--mt-fg); }
+.mt-wrap{ max-width:960px; margin:0 auto; padding:16px; }
+
+.mt-app .mt-header{ padding-top:4px; padding-bottom:8px; }
+.mt-app h1{ margin:0 0 8px; font-size:28px; }
+.mt-app .subtitle{ margin:0; color:var(--mt-muted); }
+
+/* 卡片 */
+.mt-app .card{
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:var(--mt-radius);
+  padding:16px;
+  margin:16px 0;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
 }
-.fc3-opt b { margin-right: .5rem; }
-.fc3-opt.picked { border-color: #2e7be6; box-shadow: 0 0 0 2px rgba(46,123,230,.15); }
-.panel-head { display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem; }
-.badge { background:#f2f6ff; color:#2e7be6; padding:.15rem .5rem; border-radius:.4rem; font-size:.85rem;}
-.muted { color:#7b7b7b; font-size:.9rem; }
-.btn { padding:.6rem .9rem; border-radius:.6rem; border:1px solid #ddd; background:#fff; cursor:pointer; }
-.btn.primary { background:#2e7be6; border-color:#2e7be6; color:#fff; }
-.btn.ghost { background:transparent; }
-.card { background:#fff; border:1px solid #e8e8e8; border-radius:.8rem; padding:1rem 1.1rem; margin: 1rem 0; }
-.hidden { display:none !important; }
-.container { max-width: 820px; margin: 0 auto; padding: 0 1rem; }
-.site-header, .site-foot { padding: .8rem 1rem; }
+.mt-app .hidden{ display:none; }
+
+/* 顶部留白≈卡片高度的 1/10；干掉主题注入的伪元素横线 */
+.mt-app h2::before{ content:none !important; border:0 !important; margin:0 !important; }
+.mt-app .card h2{ margin:6px 0 12px; }
+
+/* 按钮 */
+.mt-app .btn{
+  border:1px solid var(--mt-brand);
+  color:var(--mt-brand);
+  background:#fff;
+  padding:8px 16px;
+  border-radius:999px;
+  cursor:pointer;
+  transition: all .15s ease;
+}
+.mt-app .btn.primary{ background:var(--mt-brand); color:#fff; border-color:var(--mt-brand); }
+.mt-app .btn:hover{ opacity:.95; }
+.mt-app .actions{ margin-top:16px; display:flex; gap:12px; }
+
+/* 文本/条目 */
+.mt-app .item{ padding:12px; border-bottom:1px dashed #eee; }
+.mt-app .item h3{ margin:0 0 8px; font-size:16px; }
+.mt-app .badge{
+  display:inline-block; padding:2px 8px; border-radius:8px; font-size:12px;
+  background:var(--mt-accent); color:#333;
+}
+.mt-app .mt-footer{ color:#6b7280; font-size:14px; }
+
+/* 小屏 */
+@media (max-width: 768px){
+  .mt-app h1{ font-size:24px; }
+}
+
+/* =========================================================
+   MBTI 右展开卡片式下拉（与 app.js 的 150ms 定时开合配合）
+   结构：
+   .mbti-rail > .mbti-item[data-axis]
+     > .axis
+     > .mbti-select[data-target]
+         .mbti-current
+         ul.mbti-menu > li[data-v]
+   ========================================================= */
+.mt-app .mt-tip{ color:#6b7280; margin:6px 0 12px; }
+.mt-app .mbti-rail{ display:flex; flex-direction:column; gap:12px; margin:8px 0 14px; }
+.mt-app .mbti-item{ display:flex; align-items:center; gap:12px; }
+.mt-app .mbti-item .axis{ width:56px; color:#374151; font-weight:600; }
+
+.mt-app .mbti-select{
+  position:relative; display:block; margin:8px 0;
+  --w: 240px;
+  --h: 38px;
+  height: var(--h);
+}
+.mt-app .mbti-current{
+  height: var(--h);
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.08);
+  background:#fff;
+  cursor:pointer;
+  min-width: 92px;
+  text-align:left;
+}
+.mt-app .mbti-menu{
+  position:absolute; top:0; left:100%;
+  margin-left:8px;
+  width:var(--w);
+  height:var(--h);
+  list-style:none;
+  padding:0; margin:0;
+  display:flex; align-items:center; gap:8px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+  opacity:0; transform: translateX(-6px) scale(.98);
+  pointer-events:none;
+  transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+/* ★★ 关键：当 .mbti-select 被 JS 加上 .mt-open 时，真正展开并可点 */
+.mt-app .mbti-select.mt-open .mbti-menu{
+  opacity:1;
+  transform: translateX(0) scale(1);
+  pointer-events:auto;
+}
+
+.mt-app .mbti-menu li{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:10px;
+  border:1px solid rgba(47,111,128,.18);
+  color:#2f6f80;
+  cursor:pointer; user-select:none;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.mt-app .mbti-menu li:hover{ background:rgba(47,111,128,.08); }
+.mt-app .mbti-menu li[data-v=""]{ color:#6b7280; border-color:rgba(0,0,0,.12); }
+.mt-app .mbti-menu li.is-active{
+  border-color: var(--mt-brand);
+  color: var(--mt-brand);
+  background: rgba(113,135,113,.08);
+}
+
+/* 仅灰/禁用四个选择器，不影响“未测”行 */
+.mt-app .mbti-rail.disabled .mbti-select { opacity:.5; pointer-events:none; }
+.mbti-select.is-disabled .mbti-current{ opacity:.5; cursor:not-allowed; }
+.mbti-select.is-disabled .mbti-menu{ display:none !important; }
+
+/* 小屏：菜单向下展开并自适应换行 */
+@media (max-width: 768px){
+  .mt-app .mbti-select{ --w: 100%; }
+  .mt-app .mbti-menu{
+    left:0; margin-left:0; top: calc(var(--h) + 6px);
+    width:100%; height:auto; padding:8px;
+    flex-wrap:wrap; gap:8px;
+    transform: translateY(-6px);
+  }
+}
+
+/* 两侧提示文字 */
+.item .scale-hint{
+  display:flex; justify-content:space-between; align-items:center;
+  color:#8b8f97; font-size:12px; margin-bottom:6px;
+}
+
+/* 7 等分铺满一行 */
+.mt-app .likert7{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items:center;
+  width:100%;
+  padding:8px 0 10px;
+}
+
+/* 每格变大热区（圆点不变大） */
+.mt-app .likert-option{
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  width:100%;
+  min-height:44px;
+}
+.mt-app .likert-option input{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+
+/* 圆点：默认空心小圆 */
+.mt-app .likert-dot{
+  width:16px; height:16px;
+  border:2px solid #bfc7cf; border-radius:50%;
+  background:transparent !important;
+  pointer-events:none;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+
+/* 中心点稍大 */
+.mt-app .likert-option.is-center .likert-dot{ transform: scale(1.16); }
+
+/* 悬停轻微放大 */
+.mt-app .likert-option:hover .likert-dot{ transform: scale(1.08); }
+
+/* 选中：空心 + #FFD9A3 外圈柔光（强优先级避免被旧规则覆盖） */
+.mt-app .likert-option.is-selected .likert-dot{
+  background: transparent !important;
+  border-color: #FFD9A3 !important;
+  box-shadow: 0 0 0 4px rgba(255,217,163,.35) !important;
+}
+
+
+/* 题目出现动画 */
+.item.slide-in{ animation: slideInUp .28s ease both; }
+@keyframes slideInUp{
+  from{ opacity:0; transform: translateY(8px); }
+  to  { opacity:1; transform: translateY(0); }
+}
+
+/* MBTI：只有在 .mt-open 时菜单才能展开可点 */
+.mt-app .mbti-select .mbti-menu{
+  opacity:0; transform: translateX(-6px) scale(.98);
+  pointer-events:none;
+}
+.mt-app .mbti-select.mt-open .mbti-menu{
+  opacity:1; transform: translateX(0) scale(1);
+  pointer-events:auto;
+}
+
+/* “未测”时只禁用四个选择器，不把整条 rail 灰死，取消勾选即可恢复 */
+.mbti-select.is-disabled .mbti-current{ opacity:.5; cursor:not-allowed; }
+.mbti-select.is-disabled .mbti-menu{ display:none !important; }
+
+/* Likert 7：等距铺满 + 大热区 + 空心选中（#FFD9A3） */
+.mt-app .likert7{
+  display:grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  align-items:center;
+  width:100%;
+  padding:8px 0 10px;
+}
+.mt-app .likert-option{
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  min-height:40px;
+}
+.mt-app .likert-option input{
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+.mt-app .likert-dot{
+  width:16px; height:16px;
+  border:2px solid #bfc7cf; border-radius:50%;
+  background:transparent; pointer-events:none;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.mt-app .likert-option.is-center .likert-dot{ transform: scale(1.16); }
+.mt-app .likert-option:hover .likert-dot{ transform: scale(1.08); }
+.mt-app .likert-option.is-selected .likert-dot{
+  border-color:#FFD9A3;
+  box-shadow:0 0 0 3px rgba(255,217,163,.35);
+}
