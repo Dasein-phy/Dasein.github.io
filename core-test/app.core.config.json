@@ -1,66 +1,55 @@
 {
-  "version": "core-1.0",
   "useCoreModel": true,
 
   "core": {
-    "dimensions": ["R", "J", "E"],
-
-    "proto": {
-      "A0": { "R": 2.0, "J": 2.5, "E": 1.8 },
-      "A1": { "R": 2.2, "J": 4.4, "E": 1.8 },
-      "B0": { "R": 3.2, "J": 4.5, "E": 2.2 },
-      "B1": { "R": 3.8, "J": 3.0, "E": 2.8 },
-      "B2": { "R": 4.2, "J": 2.6, "E": 3.2 },
-      "B3": { "R": 3.6, "J": 3.8, "E": 2.6 },
-      "C0": { "R": 3.4, "J": 2.4, "E": 4.2 },
-      "C1": { "R": 4.8, "J": 1.8, "E": 3.8 },
-      "C2": { "R": 4.7, "J": 2.1, "E": 4.6 },
-      "C3": { "R": 2.8, "J": 2.6, "E": 3.6 },
-      "D0": { "R": 3.4, "J": 2.6, "E": 3.4 },
-      "D1": { "R": 4.4, "J": 2.2, "E": 4.0 },
-      "E0": { "R": 3.0, "J": 3.9, "E": 2.4 },
-      "E1": { "R": 2.8, "J": 2.8, "E": 2.2 },
-      "F0": { "R": 4.0, "J": 3.0, "E": 3.5 }
+    "likert_min": 1,
+    "likert_max": 5,
+    "sections": [
+      { "id": "R",  "label": "反身/觉察", "count": 12 },
+      { "id": "J",  "label": "外部正当化", "count": 12 },
+      { "id": "E1", "label": "去魅（原始E）", "count": 12 }
+    ],
+    "scoring": {
+      "reverse_keyed": true,
+      "anchor_mean": 3.0,
+      "anchor_sd": 1.0
     },
-
     "classify": {
-      "metric": "mahalanobis",
-      "sigma_diag": { "R": 0.75, "J": 0.80, "E": 0.85 },
-      "softmax_tau": 1.00
-    },
+      "prototypes": {
+        "A0": { "R": 1.6, "J": 3.6, "E": 1.8 },
+        "A1": { "R": 1.8, "J": 4.2, "E": 1.8 },
+        "B0": { "R": 2.8, "J": 4.4, "E": 2.0 },
+        "B1": { "R": 3.6, "J": 3.0, "E": 2.4 },
+        "B2": { "R": 3.4, "J": 2.6, "E": 2.6 },
+        "B3": { "R": 3.2, "J": 3.8, "E": 2.2 },
+        "C0": { "R": 3.0, "J": 2.0, "E": 2.8 },
+        "C1": { "R": 4.2, "J": 2.2, "E": 3.2 },
+        "C2": { "R": 4.0, "J": 2.0, "E": 4.2 },
+        "D0": { "R": 3.2, "J": 2.6, "E": 2.6 },
+        "D1": { "R": 3.8, "J": 2.2, "E": 3.6 },
+        "E0": { "R": 3.0, "J": 3.6, "E": 2.4 },
+        "E1": { "R": 2.6, "J": 2.6, "E": 2.2 },
+        "F0": { "R": 3.6, "J": 3.0, "E": 3.0 }
+      },
+      "metric": "euclidean",
+      "softmax_tau": 1.25
+    }
+  },
 
-    "quality": {
-      "min_q": 0.60,
-      "min_time_per_item_sec": 1.5,
-      "max_fast_streak": 6,
-      "need_attention_items": 1
+  "routing": {
+    "enabled": true,
+    "items_per_pair": 8,
+    "draw_seed": "core-branch-seed",
+    "pairs": {
+      "C1": { "pool": "C1_vs_C2", "opponent": "C2", "enabled": true },
+      "C2": { "pool": "C1_vs_C2", "opponent": "C1", "enabled": true },
+      "B0": { "pool": "B0_vs_B3", "opponent": "B3", "enabled": true },
+      "B3": { "pool": "B0_vs_B3", "opponent": "B0", "enabled": true }
     },
-
-    "uncertainty": {
-      "entropy_warn": 1.15,
-      "entropy_reject": 1.35,
-      "top2_gap_trigger": 0.12
-    },
-
-    "routing": {
-      "enable_branches": true,
-      "max_branch_depth": 1,
-      "pairs": [
-        { "id": "C1_vs_C2", "when_top1": ["C1"], "when_top2": ["C2"], "pool": "C1_vs_C2", "n_items": 8 },
-        { "id": "B0_vs_B3", "when_top1": ["B0"], "when_top2": ["B3"], "pool": "B0_vs_B3", "n_items": 8 }
-      ]
-    },
-
     "fusion": {
-      "branch_weight": 0.80,
-      "fallback_weight": 0.00
-    },
-
-    "report": {
-      "show_entropy": true,
-      "show_top2_gap": true,
-      "show_disclaimer": true,
-      "show_core_axes_tooltip": true
+      "per_item_logit": 0.42,
+      "max_items_effect": 10,
+      "post_softmax_tau": 1.0
     }
   }
 }
