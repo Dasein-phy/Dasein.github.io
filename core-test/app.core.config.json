@@ -1,112 +1,30 @@
 {
-  "ui": {
-    "title": "核心三轴测评（R/J/E′）",
-    "subtitle": "Core Model (R / J / E′)",
-    "show_branding": true
-  },
+  "useCoreModel": true,
   "core": {
-    "useCoreModel": true,
-    "scale": {
-      "likert7_map": [1, 1.67, 2.33, 3, 3.67, 4.33, 5]
+    "itemsPath": "./core-test/items.core.v1.json",
+    "theta": {
+      "beta_RE": 0.60,
+      "clipMin": 1,
+      "clipMax": 5
     },
-    "domains": ["GEN", "ACADEMIC", "FAMILY", "PUBLIC"],
-    "norms": {
-      "R": { "mean": 3.0, "sd": 0.8 },
-      "J": { "mean": 3.0, "sd": 0.8 },
-      "E": { "mean": 3.0, "sd": 0.8 },
-      "beta_RE": 0.60
+    "classify": {
+      "prototypes": [
+        { "id": "A0", "name": "低觉察沉浸", "R": 1.8, "J": 3.5, "E": 1.8 },
+        { "id": "A1", "name": "外部建构依赖", "R": 2.2, "J": 4.2, "E": 2.2 },
+        { "id": "B0", "name": "高建构依赖", "R": 3.0, "J": 4.4, "E": 2.0 },
+        { "id": "B1", "name": "局部建构",   "R": 3.6, "J": 3.2, "E": 2.6 },
+        { "id": "B2", "name": "透明虚构",   "R": 3.8, "J": 2.8, "E": 2.8 },
+        { "id": "B3", "name": "功能主义",   "R": 3.2, "J": 3.8, "E": 2.6 },
+        { "id": "C0", "name": "去建构",     "R": 3.2, "J": 2.2, "E": 3.8 },
+        { "id": "C1", "name": "反身介入",   "R": 4.3, "J": 2.4, "E": 3.6 },
+        { "id": "C2", "name": "停滞冻结",   "R": 4.0, "J": 2.0, "E": 4.3 },
+        { "id": "C3", "name": "去魅萌发",   "R": 2.8, "J": 2.6, "E": 3.6 },
+        { "id": "D0", "name": "审美姿态",   "R": 3.6, "J": 2.6, "E": 3.0 },
+        { "id": "D1", "name": "荒诞反抗",   "R": 3.6, "J": 1.8, "E": 4.0 },
+        { "id": "E0", "name": "义务契约",   "R": 3.0, "J": 3.8, "E": 2.6 },
+        { "id": "E1", "name": "享乐幸福",   "R": 2.6, "J": 2.4, "E": 2.4 },
+        { "id": "F0", "name": "动态混合",   "R": 3.4, "J": 3.0, "E": 3.2 }
+      ]
     }
-  },
-  "models": [
-    {
-      "macro": "A0",
-      "label": "低觉察沉浸",
-      "centroid": { "R": 1.8, "J": 2.8, "E": 1.8 }
-    },
-    {
-      "macro": "A1",
-      "label": "外部建构依赖",
-      "centroid": { "R": 2.0, "J": 4.2, "E": 2.2 }
-    },
-    {
-      "macro": "B0",
-      "label": "高建构依赖",
-      "centroid": { "R": 3.0, "J": 4.4, "E": 2.4 }
-    },
-    {
-      "macro": "B1",
-      "label": "局部建构",
-      "centroid": { "R": 3.6, "J": 3.2, "E": 2.8 }
-    },
-    {
-      "macro": "B2",
-      "label": "透明虚构",
-      "centroid": { "R": 3.8, "J": 2.8, "E": 3.0 }
-    },
-    {
-      "macro": "B3",
-      "label": "功能主义",
-      "centroid": { "R": 3.4, "J": 3.6, "E": 2.6 }
-    },
-    {
-      "macro": "C0",
-      "label": "去建构",
-      "centroid": { "R": 3.6, "J": 2.2, "E": 3.2 }
-    },
-    {
-      "macro": "C1",
-      "label": "反身介入",
-      "centroid": { "R": 4.4, "J": 2.0, "E": 3.6 }
-    },
-    {
-      "macro": "C2",
-      "label": "停滞冻结",
-      "centroid": { "R": 4.4, "J": 2.0, "E": 4.4 }
-    },
-    {
-      "macro": "C3",
-      "label": "去魅萌发",
-      "centroid": { "R": 2.8, "J": 2.4, "E": 3.6 }
-    },
-    {
-      "macro": "D0",
-      "label": "审美姿态",
-      "centroid": { "R": 3.6, "J": 2.4, "E": 3.2 }
-    },
-    {
-      "macro": "D1",
-      "label": "荒诞反抗",
-      "centroid": { "R": 3.8, "J": 1.8, "E": 3.8 }
-    },
-    {
-      "macro": "E0",
-      "label": "义务契约",
-      "centroid": { "R": 3.2, "J": 3.6, "E": 2.8 }
-    },
-    {
-      "macro": "E1",
-      "label": "享乐幸福",
-      "centroid": { "R": 2.8, "J": 2.2, "E": 2.4 }
-    },
-    {
-      "macro": "F0",
-      "label": "动态混合",
-      "centroid": { "R": 3.6, "J": 3.0, "E": 3.4 }
-    }
-  ],
-  "routing": {
-    "branch_rules": [
-      {
-        "pair": ["C1", "C2"],
-        "gate": { "entropy_max": 1.20, "min_gap": 0.08 },
-        "block_id": "C1vC2"
-      },
-      {
-        "pair": ["B0", "B3"],
-        "gate": { "entropy_max": 1.20, "min_gap": 0.08 },
-        "block_id": "B0vB3"
-      }
-    ]
   }
 }
-
