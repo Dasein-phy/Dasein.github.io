@@ -1,0 +1,19 @@
+{
+  "title": "意义姿态 · 测试清单",
+  "tests": [
+    {
+      "id": "baseline",
+      "name": "意义测试（基线）",
+      "desc": "A/C/D + M/S/L 经典六维，含 MBTI 先验（可选）。",
+      "page": "/index.html",
+      "supports_mbti": true
+    },
+    {
+      "id": "core",
+      "name": "核心模型（R/J/E′）",
+      "desc": "R=反身/觉察 · J=外部正当化 · E′=去魅残差；更简、可做对抗支线。",
+      "page": "/core-test/index.core.html",
+      "supports_mbti": false
+    }
+  ]
+}
