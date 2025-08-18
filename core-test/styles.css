@@ -249,3 +249,7 @@
   border-color:#FFD9A3;
   box-shadow:0 0 0 3px rgba(255,217,163,.35);
 }
+/* 兜底移除主题在 h2 前加的装饰横线 */
+.mt-app h2::before,
+.mt-app .card h2::before { content:none !important; display:none !important; }
+
