@@ -1,49 +1,57 @@
 ---
-layout: default
+layout: page
 title: 核心三轴测试
+description: 基于 R（反身/觉察）· J（外部正当化）· E′（去魅残差）的核心三轴模型
+header-img: /img/meaning-bg.jpg
 permalink: /core-test/
 ---
-<link rel="stylesheet" href="{{ '/styles.css' | relative_url }}"/>
 
-<main class="container">
-  <h1 class="page-title">意义姿态测试 · 核心三轴模型（Core）</h1>
+<div class="mt-page">
+  <div class="mt-wrap mt-app">
 
-  <!-- 说明 -->
-  <section id="intro" class="card">
-    <h2>说明</h2>
-    <ol class="intro-list">
-      <li>本路径使用 <strong>R</strong>（反身/觉察）、<strong>J</strong>（外部正当化）、<strong>E′</strong>（去魅残差）三轴进行测量。</li>
-      <li>全部为 1–7 级李克特量表；不收集个人身份信息，计算在本地浏览器完成。</li>
-      <li>完成后可查看结果并导出为 JSON。</li>
-    </ol>
-    <button id="startBtn" class="btn btn-primary">开始测试</button>
-  </section>
-
-  <!-- 问卷（逐题） -->
-  <section id="survey" class="hidden">
-    <div class="card">
-      <div class="survey-head">
-        <span class="badge">核心问卷</span>
-        <span id="progress" class="muted">0 / 36</span>
-      </div>
-      <form id="surveyForm"></form>
-      <div class="actions">
-        <button id="submitSurvey" class="btn btn-primary" type="button">提交</button>
-      </div>
+    <!-- 页眉（与基线一致的标题层级） -->
+    <div class="mt-header">
+      <h1>意义姿态测试 · 核心三轴模型（Core）</h1>
+      <p class="sub">本路径使用 R / J / E′ 三轴进行测量，并在报告中给出 Top1/Top2 宏姿态候选。</p>
     </div>
-  </section>
 
-  <!-- 结果 -->
-  <section id="report" class="hidden">
-    <div class="card">
-      <h2>结果</h2>
-      <div id="reportContent"></div>
-      <div class="actions">
-        <button id="download" class="btn" type="button">下载 JSON</button>
-        <a href="{{ '/' | relative_url }}" class="btn">返回首页</a>
+    <!-- 说明卡片（与基线一样的“卡片式”入口） -->
+    <section id="coreIntro" class="card">
+      <h2>说明</h2>
+      <ol style="margin-top:.5rem">
+        <li>本路径使用 R（反身/觉察）、J（外部正当化）、E′（去魅残差）三轴进行测量。</li>
+        <li>全部为 1–7 级李克特量表；不收集个人身份信息，所有计算在本地浏览器完成。</li>
+        <li>完成后可查看结果并导出为 JSON。</li>
+      </ol>
+      <div class="actions" style="margin-top:1rem">
+        <button id="coreStartBtn" class="btn primary">开始测试</button>
       </div>
-    </div>
-  </section>
-</main>
+    </section>
 
-<script src="{{ '/core-test/app.core.js' | relative_url }}"></script>
+    <!-- 问卷容器（逐题生成；沿用基线 class） -->
+    <section id="coreSurvey" class="hidden">
+      <div class="progress-hint">
+        <span class="pill">核心问卷</span>
+        <span id="coreProg" class="muted">0 / 36</span>
+      </div>
+      <div id="coreForm"></div>
+      <div class="actions" style="display:none">
+        <button id="coreSubmit" class="btn primary">提交</button>
+      </div>
+    </section>
+
+    <!-- 报告容器（沿用基线样式） -->
+    <section id="coreReport" class="hidden">
+      <div id="coreReportContent"></div>
+      <div class="actions">
+        <button id="coreDownload" class="btn">导出 JSON</button>
+        <button id="coreRestart" class="btn">重新开始</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- 与基线一致：先样式，再脚本 -->
+<link rel="stylesheet" href="../styles.css">
+<script src="./app.core.js"></script>
