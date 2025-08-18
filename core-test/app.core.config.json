@@ -1,17 +1,14 @@
 {
   "title": "Core 三轴配置",
   "items": "./items.core.v1.json",
-
-  /* 反向正交化：用于从 D 原值得到 E′（去掉与 R 的线性重叠）。经验系数，先沿用你当前逻辑。 */
+  
   "orth_beta_R2E": 0.55,
-
-  /* 报告阈值与显示控制（可按需微调，不影响 UI） */
+ 
   "display": {
     "show_confidence": true,
     "show_vectors": true
   },
 
-  /* 原型锚点（与 app.core.js 的 classify() 对齐） */
   "prototypes": [
     { "id": "A0", "label": "A0 低觉察沉浸",   "R": 2.2, "J": 2.6, "E": 2.2, "note": "低反身，去魅弱，更多随流与当下体验" },
     { "id": "A1", "label": "A1 外部建构依赖", "R": 2.4, "J": 4.2, "E": 2.4, "note": "强外部正当化（宗教/礼俗/民族/家族）" },
