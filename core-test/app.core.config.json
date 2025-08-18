@@ -1,52 +1,42 @@
 {
-  "title": "意义姿态 · 核心模型 (Core)",
-  "subtitle": "Core path · R/J/E′ 三轴 · Top1/Top2 判别支线",
-  "ui": {
-    "mode": "progressive",
-    "leftLabel": "非常不同意",
-    "rightLabel": "非常同意"
-  },
-  "scoring": {
-    "beta_RE": 0.65
-  },
-  "distanceWeights": {
-    "R": 0.5,
-    "J": 1.0,
-    "E": 0.8
-  },
-  "prototypes": {
-    "A0": { "R": 0.20, "J": 0.40, "E": 0.10 },
-    "A1": { "R": 0.20, "J": 0.85, "E": 0.10 },
-    "B0": { "R": 0.40, "J": 0.80, "E": 0.20 },
-    "B1": { "R": 0.60, "J": 0.45, "E": 0.35 },
-    "B2": { "R": 0.70, "J": 0.35, "E": 0.30 },
-    "B3": { "R": 0.50, "J": 0.70, "E": 0.35 },
-    "C0": { "R": 0.70, "J": 0.20, "E": 0.20 },
-    "C1": { "R": 0.70, "J": 0.20, "E": 0.60 },
-    "C2": { "R": 0.80, "J": 0.20, "E": 0.85 },
-    "D0": { "R": 0.55, "J": 0.30, "E": 0.45 },
-    "D1": { "R": 0.75, "J": 0.25, "E": 0.65 },
-    "E0": { "R": 0.50, "J": 0.60, "E": 0.25 },
-    "E1": { "R": 0.45, "J": 0.35, "E": 0.30 },
-    "F0": { "R": 0.60, "J": 0.50, "E": 0.50 }
-  },
-  "branch": {
-    "enable": true,
-    "blocks": [
-      {
-        "code": "C1vC2",
-        "name": "C1 vs C2 判别支线",
-        "pairs": ["C1", "C2"],
-        "items_file": "items.branch.v1.json",
-        "items_key": "C1vC2"
-      },
-      {
-        "code": "B0vB3",
-        "name": "B0 vs B3 判别支线",
-        "pairs": ["B0", "B3"],
-        "items_file": "items.branch.v1.json",
-        "items_key": "B0vB3"
-      }
-    ]
+  "useCoreModel": true,
+
+  "orth_beta_R2E": 0.55,
+
+  "prototypes": [
+    { "macro": "A0", "label": "A0 低觉察沉浸",   "R": 2.1, "J": 3.2, "Ep": 2.3 },
+    { "macro": "A1", "label": "A1 外部建构依赖", "R": 2.3, "J": 4.2, "Ep": 2.2 },
+    { "macro": "B0", "label": "B0 高建构依赖",   "R": 3.0, "J": 4.1, "Ep": 2.6 },
+    { "macro": "B1", "label": "B1 局部建构",     "R": 3.6, "J": 3.2, "Ep": 2.8 },
+    { "macro": "B2", "label": "B2 透明虚构",     "R": 3.8, "J": 2.8, "Ep": 3.0 },
+    { "macro": "B3", "label": "B3 功能主义",     "R": 3.2, "J": 3.6, "Ep": 2.7 },
+    { "macro": "C0", "label": "C0 去建构",       "R": 3.5, "J": 2.5, "Ep": 3.8 },
+    { "macro": "C1", "label": "C1 反身介入",     "R": 4.4, "J": 2.4, "Ep": 3.6 },
+    { "macro": "C2", "label": "C2 停滞冻结",     "R": 4.5, "J": 2.3, "Ep": 4.3 },
+    { "macro": "C3", "label": "C3 去魅萌发",     "R": 2.8, "J": 2.4, "Ep": 3.6 },
+    { "macro": "D0", "label": "D0 审美姿态",     "R": 3.3, "J": 2.7, "Ep": 3.1 },
+    { "macro": "D1", "label": "D1 荒诞反抗",     "R": 3.6, "J": 2.4, "Ep": 3.9 },
+    { "macro": "E0", "label": "E0 义务契约",     "R": 3.1, "J": 3.7, "Ep": 2.8 },
+    { "macro": "E1", "label": "E1 享乐幸福",     "R": 2.9, "J": 2.8, "Ep": 2.7 },
+    { "macro": "F0", "label": "F0 动态混合",     "R": 3.4, "J": 3.0, "Ep": 3.2 }
+  ],
+
+  "routing": {
+    "enabled": true,
+    "items_per_pair": 8,
+    "draw_seed": "core-branch-seed",
+    "pairs": {
+      "C1": { "pool": "C1_vs_C2", "opponent": "C2", "enabled": true },
+      "C2": { "pool": "C1_vs_C2", "opponent": "C1", "enabled": true },
+      "B0": { "pool": "B0_vs_B3", "opponent": "B3", "enabled": true },
+      "B3": { "pool": "B0_vs_B3", "opponent": "B0", "enabled": true }
+    },
+    "fusion": {
+      "per_item_logit": 0.42,
+      "max_items_effect": 10,
+      "post_softmax_tau": 1.0
+    }
   }
+}
+
 }
