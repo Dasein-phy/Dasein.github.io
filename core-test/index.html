@@ -1,80 +1,52 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <title>意义姿态 · 核心模型（Core）</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="./styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>意义姿态 · 核心模型 (Core)</title>
+  <!-- 复用站点样式；按你的项目路径，core-test 在子目录，所以回到上级 -->
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    /* 只做极少补充，保持你原站风格 */
+    .mt-app .q-title{font-weight:600;margin:0 0 8px;}
+    .mt-app .scale-hint{display:flex;justify-content:space-between;color:#6b7280;font-size:12px;margin:6px 0 4px;}
+    .mt-app .likert7{display:flex;gap:10px;padding:8px 0;}
+    .mt-app .likert-option{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+    .mt-app .likert-option .likert-dot{display:inline-block;width:14px;height:14px;border:2px solid #94a3b8;border-radius:50%;}
+    .mt-app .likert-option.is-selected .likert-dot{background:#2f6f80;border-color:#2f6f80;}
+    .mt-app .card{background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:16px;margin:10px 0;}
+    .mt-app .btn{display:inline-block;padding:8px 14px;border-radius:10px;background:#2f6f80;color:#fff;border:none;cursor:pointer}
+    .mt-app .btn.secondary{background:#e5e7eb;color:#111827}
+    .mt-app .hidden{display:none!important;}
+  </style>
 </head>
 <body>
-  <header class="site-header">
-    <h1 class="brand">意义姿态 · 核心模型（Core）</h1>
-  </header>
+  <div class="mt-app mt-wrap" id="coreApp">
+    <h1>意义姿态 · 核心模型（Core）</h1>
 
-  <main class="container">
-    <!-- Intro -->
-    <section id="introCore" class="card">
-      <h2>开始</h2>
-      <p>本路径采用 R/J/E′ 三轴核心量表。完成后可进入“支线问卷”进一步判别 Top1 vs Top2。</p>
-      <button id="startBtnCore" class="btn primary">开始核心测试</button>
+    <section id="coreIntro" class="card">
+      <h3>开始</h3>
+      <p>本路径采用 R / J / E′ 三轴核心量表。完成后将给出 Top1/Top2 宏姿态候选。</p>
+      <button id="coreStartBtn" class="btn">开始核心测试</button>
     </section>
 
-    <!-- Core survey -->
-    <section id="surveyCore" class="card hidden">
-      <div class="panel-head">
-        <span class="badge">核心问卷</span>
-        <span class="muted" id="coreProgress">0 / 36</span>
-      </div>
+    <section id="coreSurvey" class="hidden">
+      <div id="coreProgress" style="color:#6b7280;margin:8px 0;">0 / 36</div>
       <form id="coreForm"></form>
-      <div class="actions">
-        <button id="submitCore" class="btn primary">提交核心问卷</button>
+      <div class="actions hidden" id="coreActions">
+        <button id="coreSubmitBtn" class="btn">提交问卷</button>
+        <button id="coreRestartBtn" class="btn secondary" type="button">重来</button>
       </div>
     </section>
 
-    <!-- Core report -->
-    <section id="reportCore" class="card hidden">
-      <h2>核心结果</h2>
-      <div id="coreReportContent"></div>
+    <section id="coreReport" class="hidden">
+      <div id="coreReportContent" class="card"></div>
       <div class="actions">
-        <button id="startBranchCore" class="btn" disabled>进入支线问卷</button>
-        <button id="restartCore" class="btn ghost">重新开始</button>
+        <a class="btn secondary" href="../index.html">回到首页</a>
       </div>
     </section>
+  </div>
 
-    <!-- Branch survey -->
-    <section id="branchCore" class="card hidden">
-      <div class="panel-head">
-        <span class="badge">支线测试</span>
-        <span class="muted" id="branchHint"></span>
-        <span class="muted" id="branchProgress" style="margin-left:auto;">0 / 8</span>
-      </div>
-      <div id="branchItems"></div>
-      <div class="actions">
-        <button id="submitBranch" class="btn primary" disabled>提交支线结果</button>
-      </div>
-    </section>
-
-    <!-- Branch report (merged) -->
-    <section id="mergedCore" class="card hidden">
-      <h2>融合后结论</h2>
-      <div id="mergedReportContent"></div>
-      <div class="actions">
-        <button id="restartAll" class="btn ghost">重新开始</button>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-foot">
-    <span class="muted">Core path · R/J/E′ 测量与 Top1-Top2 判别支线</span>
-  </footer>
-
-  <script>
-    window.__CORE_PATHS__ = {
-      cfg:  './app.core.config.json',
-      base: './items.core.v1.json',
-      pool: './items.branch.v1.json'
-    };
-  </script>
   <script src="./app.core.js"></script>
 </body>
 </html>
