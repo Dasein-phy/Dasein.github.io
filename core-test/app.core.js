@@ -1,87 +1,91 @@
-/* ===== Core Test app.core.js (R/J/E′) ===== */
+/* ===== Core 三轴量表（R/J/E′）— 与基线 UI 对齐版 ===== */
 
-/* ---------- DOM Helpers ---------- */
-const $  = (sel, root=document) => root.querySelector(sel);
-const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+/* ---------- 路径 ---------- */
+const CORE_CFG_PATH   = './core-test/app.core.config.json';
+let CORE_ITEMS_PATH   = './core-test/items.core.v1.json';
 
-/* ---------- State ---------- */
+/* ---------- 状态 ---------- */
 let CORE_CFG = null;
-let CORE_ITEMS = [];      // [{id,text,domain,weights:{R,J,E}, w?}, ...]
-const ANSWERS = new Map();// id -> raw(1..7)
-let currentIndex = 0;
+let CORE_ITEMS = [];          // [{id,text,dim:'R'|'J'|'D', dir: +1|-1, domain?:string}]
+const CORE_ANS = new Map();   // Map<id, raw 1..7>
 
-/* ---------- Utils ---------- */
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-const clip  = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
-const map7  = raw => (CORE_CFG?.core?.scale?.likert7_map || [1,1.67,2.33,3,3.67,4.33,5])[raw-1] || 3;
-function escapeHTML(s){
-  return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-}
-async function loadJSON(path){
-  const r = await fetch(path);
-  if(!r.ok) throw new Error('fetch fail: ' + path);
-  return await r.json();
-}
+/* ---------- DOM ---------- */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-/* ---------- Load ---------- */
-async function loadAll(){
-  const cfgPath   = window.__CORE_CFG_PATH   || './app.core.config.json';
-  const itemsPath = window.__CORE_ITEMS_PATH || './items.core.v1.json';
-  CORE_CFG   = await loadJSON(cfgPath);
-  CORE_ITEMS = await loadJSON(itemsPath);
+/* ---------- 工具 ---------- */
+const mapLikertToFive = v => 1 + (v - 1) * (4/6);
+const clip = (x, lo=1, hi=5) => Math.max(lo, Math.min(hi, x));
+const escapeHTML = s => String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 
-  // 允许整体打乱（可传 ?seed=xxx）
-  const seed = (new URL(location.href)).searchParams.get('seed') || '';
-  if(seed){
-    CORE_ITEMS = seededShuffle(CORE_ITEMS, seed);
-  }
-}
-function seededShuffle(arr, s){
-  let h = 2166136261;
-  for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  const out = arr.slice();
-  for(let i=out.length-1;i>0;i--){
-    h ^= (h<<13); h ^= (h>>>7); h ^= (h<<17);
-    const j = Math.abs(h) % (i+1);
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
+/* ---------- 加载 ---------- */
+async function loadCore(){
+  const cfg = await fetch(CORE_CFG_PATH).then(r=>r.json());
+  CORE_CFG = cfg;
+  if (cfg?.core?.itemsPath) CORE_ITEMS_PATH = cfg.core.itemsPath;
+
+  const dat = await fetch(CORE_ITEMS_PATH).then(r=>r.json());
+  // 兼容两种结构：{items:[...]} 或直接数组
+  const arr = Array.isArray(dat) ? dat : (Array.isArray(dat.items) ? dat.items : []);
+  CORE_ITEMS = arr.map((n, i)=>({
+    id: n.id ?? (i+1),
+    text: n.text || `Q${i+1}`,
+    dim: (n.dim || 'R').toUpperCase(),   // R / J / D
+    dir: (typeof n.dir === 'number' ? (n.dir >= 0 ? 1 : -1) : 1),
+    domain: n.domain || null,
+    w: (typeof n.w === 'number' ? n.w : 1.0)
+  }));
 }
 
-/* ---------- UI Init ---------- */
-function init(){
+/* ---------- 初始化（沿用基线 ID） ---------- */
+function initCore(){
   const btnStart   = $('#startBtn');
   const btnSubmit  = $('#submitSurvey');
+  const btnDownload= $('#download');
 
   if(btnStart){
     btnStart.addEventListener('click', ()=>{
       $('#intro')?.classList.add('hidden');
       $('#survey')?.classList.remove('hidden');
-      startSurvey();
+      startSurveyCore();
     });
   }
   if(btnSubmit){
     btnSubmit.addEventListener('click', ()=>{
-      const read = readSurvey();
-      if(!read.ok){ alert('还有题未作答。'); return; }
-      const est  = estimate_theta(read.answers);
-      const cls  = classify(est);
-      renderReport(est, cls);
+      const got = readSurveyCore();
+      if(!got.ok){ alert('还有题未作答。'); return; }
+      const est = estimateTheta(got.answers);
+      const cls = classify(est);
+      renderReportCore(est, cls);
+    });
+  }
+  if(btnDownload){
+    btnDownload.addEventListener('click', ()=>{
+      const data = window.__coreResult || {};
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'core-test-result.json';
+      a.click();
+      URL.revokeObjectURL(url);
     });
   }
 }
 
-/* ---------- Progressive Survey ---------- */
-function startSurvey(){
-  ANSWERS.clear();
-  currentIndex = 0;
+/* ---------- Progressive 渲染（与基线一致） ---------- */
+function startSurveyCore(){
+  CORE_ANS.clear();
   const form = $('#surveyForm');
   if(form) form.innerHTML = '';
   const actions = $('#submitSurvey')?.closest('.actions');
   if(actions) actions.style.display = 'none';
-  renderOneItem(currentIndex);
+  updateProgress(0);
+  renderOneCore(0);
 }
-
+function updateProgress(done){
+  const p = $('#progress');
+  if(p) p.textContent = `${done} / ${CORE_ITEMS.length}`;
+}
 function buildLikert7(name, onPick){
   const wrap = document.createElement('div');
   wrap.className = 'likert7';
@@ -95,22 +99,18 @@ function buildLikert7(name, onPick){
     const dot = document.createElement('span');
     dot.className = 'likert-dot';
 
-    opt.appendChild(input);
-    opt.appendChild(dot);
-
+    opt.appendChild(input); opt.appendChild(dot);
     input.addEventListener('change', ()=>{
       wrap.querySelectorAll('.likert-option').forEach(k=>k.classList.remove('is-selected','tapped'));
       opt.classList.add('is-selected','tapped');
       setTimeout(()=>opt.classList.remove('tapped'), 120);
       onPick(parseInt(input.value,10));
     });
-
     wrap.appendChild(opt);
   }
   return wrap;
 }
-
-function renderOneItem(idx){
+function renderOneCore(idx){
   const form = $('#surveyForm');
   if(!form) return;
 
@@ -124,138 +124,77 @@ function renderOneItem(idx){
   const it = CORE_ITEMS[idx];
   const node = document.createElement('div');
   node.className = 'item card slide-in';
-  node.setAttribute('data-qid', it.id);
   node.setAttribute('data-q-idx', idx);
-
-  const dom = it.domain ? `<span class="badge">${escapeHTML(it.domain)}</span>` : '';
   node.innerHTML = `
-    <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)} ${dom}</h3>
+    <h3 class="q-title">Q${idx+1}. ${escapeHTML(it.text)}</h3>
     <div class="scale-hint"><span>非常不同意</span><span>非常同意</span></div>
   `;
-
   const scale = buildLikert7('q' + it.id, (raw)=>{
-    ANSWERS.set(it.id, raw);
-    if(node.getAttribute('data-next-spawned') !== '1'){
-      node.setAttribute('data-next-spawned', '1');
+    CORE_ANS.set(it.id, raw);
+    updateProgress(CORE_ANS.size);
+    if(node.getAttribute('data-next')!=='1'){
+      node.setAttribute('data-next','1');
       const nextIdx = idx + 1;
-      renderOneItem(nextIdx);
+      renderOneCore(nextIdx);
       const nextEl = form.querySelector(`[data-q-idx="${nextIdx}"]`);
-      if(nextEl){
-        setTimeout(()=> nextEl.scrollIntoView({behavior:'smooth', block:'center'}), 60);
-      }
+      if(nextEl) setTimeout(()=> nextEl.scrollIntoView({behavior:'smooth', block:'center'}), 60);
     }
   });
   node.appendChild(scale);
   form.appendChild(node);
 }
 
-function readSurvey(){
-  if(ANSWERS.size < CORE_ITEMS.length) return {ok:false};
+/* ---------- 读取答案 ---------- */
+function readSurveyCore(){
+  if(CORE_ANS.size < CORE_ITEMS.length) return {ok:false};
   const out = {};
   for(const it of CORE_ITEMS){
-    const v = ANSWERS.get(it.id);
-    if(typeof v !== 'number') return {ok:false};
-    out[it.id] = v;
+    const raw = CORE_ANS.get(it.id);
+    if(typeof raw!=='number') return {ok:false};
+    out[it.id] = raw;
   }
   return {ok:true, answers: out};
 }
 
-/* ---------- Core Estimation ---------- */
-/**
- * estimate_theta(answers) -> { R, J, E, E_prime, byDomain:{...}, qc:{...} }
- * 简化版：按题目 weights 线性加权→域均值→全局均值；E′ = E - beta*R
- */
-function estimate_theta(answers){
-  const norms = CORE_CFG?.core?.norms || {};
-  const beta  = typeof norms.beta_RE === 'number' ? norms.beta_RE : 0.6;
-
-  // 累积器
-  const acc = { R:{num:0,den:0}, J:{num:0,den:0}, E:{num:0,den:0} };
-  const domainAcc = {};
-
+/* ---------- 估计三轴 θ ---------- */
+function estimateTheta(answers){
+  const acc = { R:{n:0,d:0}, J:{n:0,d:0}, D:{n:0,d:0} };
   for(const it of CORE_ITEMS){
     const raw = answers[it.id];
-    const score = map7(raw); // 1..5
-    const w = (typeof it.w === 'number') ? it.w : 1.0;
-
-    const ws = it.weights || {};
-    for(const k of ['R','J','E']){
-      const c = +ws[k] || 0;
-      if(c===0) continue;
-      const weightAbs = Math.abs(w * c);
-      const signed    = (c >= 0) ? score : (6 - score);
-      acc[k].num += weightAbs * signed;
-      acc[k].den += weightAbs;
-
-      const d = it.domain || 'GEN';
-      domainAcc[d] = domainAcc[d] || {R:{num:0,den:0},J:{num:0,den:0},E:{num:0,den:0}};
-      domainAcc[d][k].num += weightAbs * signed;
-      domainAcc[d][k].den += weightAbs;
-    }
+    const s = mapLikertToFive(raw);            // 1..5
+    const signed = (it.dir >= 0) ? s : (6 - s); // 反向计分
+    const w = Math.abs(it.w || 1);
+    acc[it.dim].n += w * signed;
+    acc[it.dim].d += w;
   }
+  const avg = k => acc[k].d>0 ? acc[k].n/acc[k].d : 3.0;
+  const R = clip(avg('R'));
+  const J = clip(avg('J'));
+  const E_raw = clip(avg('D'));
 
-  const avg = x => x.den>0 ? (x.num/x.den) : 3.0;
-  const R = clip(avg(acc.R)), J = clip(avg(acc.J)), E = clip(avg(acc.E));
-  const E_prime = clip(E - beta * (R - 3) - 0 + 3); // 把回归扣除后的残差平移回 1..5 近似
+  const beta = CORE_CFG?.core?.theta?.beta_RE ?? 0.60;
+  const Eprime = clip(E_raw - beta*(R-3));  // 以 3 为中心做残差近似
+  return { R:+R.toFixed(2), J:+J.toFixed(2), E_raw:+E_raw.toFixed(2), E:+Eprime.toFixed(2) };
+}
 
-  const byDomain = {};
-  Object.keys(domainAcc).forEach(d=>{
-    byDomain[d] = {
-      R: clip(avg(domainAcc[d].R)),
-      J: clip(avg(domainAcc[d].J)),
-      E: clip(avg(domainAcc[d].E))
-    };
+/* ---------- 分类 ---------- */
+function classify(theta){
+  const vec = [theta.R, theta.J, theta.E];
+  const protos = CORE_CFG?.core?.classify?.prototypes || [];
+  let best = null, second = null;
+
+  function dist2(p){ const dR=vec[0]-p.R, dJ=vec[1]-p.J, dE=vec[2]-p.E; return dR*dR + dJ*dJ + dE*dE; }
+  protos.forEach(p=>{
+    const d2 = dist2(p);
+    const item = { id:p.id, name:p.name, d2, sim: 1 / (1 + Math.sqrt(d2)) };
+    if(!best || d2 < best.d2) { second = best; best = item; }
+    else if(!second || d2 < second.d2) { second = item; }
   });
-
-  // 简单质量指标（可扩展）
-  const qc = {
-    answered: ANSWERS.size,
-    total: CORE_ITEMS.length
-  };
-
-  return { R:+R.toFixed(2), J:+J.toFixed(2), E:+E.toFixed(2), E_prime:+E_prime.toFixed(2), byDomain, qc };
+  return { top1: best, top2: second };
 }
 
-/* ---------- Classification ---------- */
-/**
- * classify(est) -> { top1, top2, ranks:[...], entropy, gap }
- */
-function classify(est){
-  const models = CORE_CFG?.models || [];
-  if(!models.length) return { ranks:[], entropy:null, gap:null };
-
-  // 以 E′ 参与
-  const P = { R: est.R, J: est.J, E: est.E_prime };
-  const sigma = 1.0;
-
-  const withDist = models.map(m=>{
-    const C = m.centroid || {};
-    const d2 = Math.pow(P.R-(C.R||3),2) + Math.pow(P.J-(C.J||3),2) + Math.pow(P.E-(C.E||3),2);
-    const dist = Math.sqrt(d2);
-    const sim = Math.exp(-d2/(2*sigma*sigma));
-    return { macro:m.macro, label:m.label, dist: +dist.toFixed(3), sim: +sim.toFixed(4) };
-  }).sort((a,b)=> b.sim - a.sim);
-
-  // softmax 概率
-  const logits = withDist.map(x=>x.sim);
-  const Z = logits.reduce((a,b)=>a+b,0) || 1;
-  const probs = logits.map(x=>x/Z);
-  const entropy = -probs.reduce((s,p)=> s + (p>0? p*Math.log(p):0), 0);
-
-  // gap（Top1-Top2）
-  const gap = (withDist[0]?.sim || 0) - (withDist[1]?.sim || 0);
-
-  return {
-    top1: withDist[0],
-    top2: withDist[1],
-    ranks: withDist,
-    entropy: +entropy.toFixed(3),
-    gap: +gap.toFixed(4)
-  };
-}
-
-/* ---------- Report ---------- */
-function renderReport(est, cls){
+/* ---------- 报告 ---------- */
+function renderReportCore(theta, cls){
   $('#survey')?.classList.add('hidden');
   const wrap = $('#reportContent');
   if(!wrap) return;
@@ -263,39 +202,30 @@ function renderReport(est, cls){
   const lines = [];
   lines.push(`<p><strong>核心三轴（1–5）</strong></p>`);
   lines.push(`<ul>
-    <li>反身/觉察 R：${est.R}</li>
-    <li>外部正当化 J：${est.J}</li>
-    <li>去魅残差 E′：${est.E_prime} <span style="color:#888">(原始E=${est.E})</span></li>
+    <li>反身/觉察 R：${theta.R}</li>
+    <li>外部正当化 J：${theta.J}</li>
+    <li>去魅残差 E′：${theta.E} <span class="muted">(原始 D=${theta.E_raw})</span></li>
   </ul>`);
 
   if(cls?.top1){
-    lines.push(`<p><strong>宏姿态候选</strong></p>`);
-    lines.push(`<ul>
-      <li>Top1：${cls.top1.macro}（${cls.top1.label}）<span style="color:#888"> 相似度 ${cls.top1.sim}，距离 ${cls.top1.dist}</span></li>
-      <li>Top2：${cls.top2.macro}（${cls.top2.label}）<span style="color:#888"> 相似度 ${cls.top2.sim}，距离 ${cls.top2.dist}</span></li>
-      <li>分布熵：${cls.entropy}；Top1–Top2 差距：${cls.gap}</li>
-    </ul>`);
-  }
-
-  // 域分布
-  if(est.byDomain && Object.keys(est.byDomain).length){
-    lines.push(`<p><strong>按域分布</strong></p>`);
-    const seg = Object.entries(est.byDomain).map(([d,v])=>`${d}: R=${v.R} J=${v.J} E=${v.E}`).join(' | ');
-    lines.push(`<p>${seg}</p>`);
+    const t1 = cls.top1, t2 = cls.top2;
+    lines.push(`<p>宏姿态候选：<span class="badge">${t1.id} ${t1.name}</span>（相似度 ${t1.sim.toFixed(4)}）</p>`);
+    if(t2) lines.push(`<p class="muted">Top2：${t2.id} ${t2.name}（相似度 ${t2.sim.toFixed(4)}）</p>`);
   }
 
   wrap.innerHTML = lines.join('\n');
   $('#report')?.classList.remove('hidden');
-  window.__coreResult = { est, cls };
+  window.__coreResult = { theta, classify: cls };
 }
 
-/* ---------- Boot ---------- */
+/* ---------- 启动 ---------- */
 window.addEventListener('DOMContentLoaded', async ()=>{
   try{
-    await loadAll();
-    init();
+    await loadCore();
+    initCore();
   }catch(e){
     console.error(e);
     alert('Core 加载失败：' + e.message);
   }
 });
+
