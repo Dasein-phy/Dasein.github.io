@@ -1,104 +1,80 @@
----
-layout: page
-title: 核心测验（R/J/E′）
-description: 三轴核心模型 · 反身/觉察（R）· 外部正当化（J）· 去魅残差（E′）
-header-img: /img/meaning-bg.jpg
-permalink: /core-test/
----
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>意义姿态 · 核心模型（Core）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1 class="brand">意义姿态 · 核心模型（Core）</h1>
+  </header>
 
-<div class="mt-page">
-  <div class="mt-wrap mt-app">
+  <main class="container">
+    <!-- Intro -->
+    <section id="introCore" class="card">
+      <h2>开始</h2>
+      <p>本路径采用 R/J/E′ 三轴核心量表。完成后可进入“支线问卷”进一步判别 Top1 vs Top2。</p>
+      <button id="startBtnCore" class="btn primary">开始核心测试</button>
+    </section>
 
-    <header class="mt-header">
-      <h1>核心测验（R / J / E′）</h1>
-      <p class="subtitle">三轴核心模型 · 反身/觉察（R）· 外部正当化（J）· 去魅残差（E′）</p>
-    </header>
+    <!-- Core survey -->
+    <section id="surveyCore" class="card hidden">
+      <div class="panel-head">
+        <span class="badge">核心问卷</span>
+        <span class="muted" id="coreProgress">0 / 36</span>
+      </div>
+      <form id="coreForm"></form>
+      <div class="actions">
+        <button id="submitCore" class="btn primary">提交核心问卷</button>
+      </div>
+    </section>
 
-    <main>
-      <section id="intro" class="card">
-        <h2>说明</h2>
-        <ol>
-          <li>本版本为“核心模型”试做，仅估计 R/J/E′ 三个维度，并给出宏姿态 Top1/Top2 候选。</li>
-          <li>不使用 MBTI 先验，也不输出 M/S/L；UI 保持一致，仅用作演示与收集体验反馈。</li>
-          <li>不收集个人身份信息，全部计算在浏览器本地进行，可导出 JSON 结果。</li>
-        </ol>
-        <button id="startBtn" class="btn primary">开始测试</button>
-      </section>
+    <!-- Core report -->
+    <section id="reportCore" class="card hidden">
+      <h2>核心结果</h2>
+      <div id="coreReportContent"></div>
+      <div class="actions">
+        <button id="startBranchCore" class="btn" disabled>进入支线问卷</button>
+        <button id="restartCore" class="btn ghost">重新开始</button>
+      </div>
+    </section>
 
-      <!-- 为了保持 UI 一致，保留 MBTI 卡片，但提示“此模型不使用 MBTI” -->
-      <section id="mbti" class="card hidden">
-        <h2>MBTI（不会参与本模型计分）</h2>
-        <p class="mt-tip">提示：核心模型不使用 MBTI 先验，仅保留此卡片以保持流程一致。</p>
+    <!-- Branch survey -->
+    <section id="branchCore" class="card hidden">
+      <div class="panel-head">
+        <span class="badge">支线测试</span>
+        <span class="muted" id="branchHint"></span>
+        <span class="muted" id="branchProgress" style="margin-left:auto;">0 / 8</span>
+      </div>
+      <div id="branchItems"></div>
+      <div class="actions">
+        <button id="submitBranch" class="btn primary" disabled>提交支线结果</button>
+      </div>
+    </section>
 
-        <div class="mbti-rail">
-          <div class="mbti-item" data-axis="ei">
-            <label class="axis">E/I</label>
-            <div class="mbti-select" data-target="ei" data-value="">
-              <button class="mbti-current" type="button">未填</button>
-              <ul class="mbti-menu">
-                <li data-v="">未填</li><li data-v="E">E</li><li data-v="I">I</li><li data-v="X">X</li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbti-item" data-axis="ns">
-            <label class="axis">N/S</label>
-            <div class="mbti-select" data-target="ns" data-value="">
-              <button class="mbti-current" type="button">未填</button>
-              <ul class="mbti-menu">
-                <li data-v="">未填</li><li data-v="N">N</li><li data-v="S">S</li><li data-v="X">X</li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbti-item" data-axis="ft">
-            <label class="axis">F/T</label>
-            <div class="mbti-select" data-target="ft" data-value="">
-              <button class="mbti-current" type="button">未填</button>
-              <ul class="mbti-menu">
-                <li data-v="">未填</li><li data-v="F">F</li><li data-v="T">T</li><li data-v="X">X</li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbti-item" data-axis="pj">
-            <label class="axis">P/J</label>
-            <div class="mbti-select" data-target="pj" data-value="">
-              <button class="mbti-current" type="button">未填</button>
-              <ul class="mbti-menu">
-                <li data-v="">未填</li><li data-v="P">P</li><li data-v="J">J</li><li data-v="X">X</li>
-              </ul>
-            </div>
-          </div>
-          <label class="mbti-none">
-            <input type="checkbox" id="mbti-none"> 我没有做过 MBTI 测试
-          </label>
-        </div>
+    <!-- Branch report (merged) -->
+    <section id="mergedCore" class="card hidden">
+      <h2>融合后结论</h2>
+      <div id="mergedReportContent"></div>
+      <div class="actions">
+        <button id="restartAll" class="btn ghost">重新开始</button>
+      </div>
+    </section>
+  </main>
 
-        <button id="toSurvey" class="btn">进入问卷</button>
-      </section>
+  <footer class="site-foot">
+    <span class="muted">Core path · R/J/E′ 测量与 Top1-Top2 判别支线</span>
+  </footer>
 
-      <section id="survey" class="card hidden">
-        <h2>核心问卷</h2>
-        <form id="surveyForm"></form>
-        <div class="actions">
-          <button id="submitSurvey" class="btn primary">提交</button>
-        </div>
-      </section>
-
-      <section id="report" class="card hidden">
-        <h2>结果</h2>
-        <div id="reportContent"></div>
-        <div class="actions">
-          <button id="download" class="btn">下载 JSON</button>
-          <button id="restart" class="btn">重新开始</button>
-        </div>
-      </section>
-    </main>
-
-    <footer class="mt-footer">
-      <p>© 核心测验 · 仅供概念验证与研究使用</p>
-    </footer>
-
-  </div>
-</div>
-
-<link rel="stylesheet" href="{{ site.baseurl }}/core-test/styles.css">
-<script src="{{ site.baseurl }}/core-test/app.js"></script>
+  <script>
+    window.__CORE_PATHS__ = {
+      cfg:  './app.core.config.json',
+      base: './items.core.v1.json',
+      pool: './items.branch.v1.json'
+    };
+  </script>
+  <script src="./app.core.js"></script>
+</body>
+</html>
