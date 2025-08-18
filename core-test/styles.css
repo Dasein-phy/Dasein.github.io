@@ -7,3 +7,26 @@
   font-size:12px; background:#eef6ff; color:#2563eb; margin-left:8px;
 }
 .mt-app .small-muted{ color:#6b7280; font-size:12px; }
+
+.fc3 .stem { margin-bottom: .75rem; line-height: 1.6; }
+.fc3-options { display: grid; grid-template-columns: 1fr; gap: .5rem; }
+.fc3-opt {
+  border: 1px solid var(--border, #ddd);
+  background: #fff;
+  padding: .6rem .8rem;
+  border-radius: .6rem;
+  text-align: left;
+  cursor: pointer;
+}
+.fc3-opt b { margin-right: .5rem; }
+.fc3-opt.picked { border-color: #2e7be6; box-shadow: 0 0 0 2px rgba(46,123,230,.15); }
+.panel-head { display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem; }
+.badge { background:#f2f6ff; color:#2e7be6; padding:.15rem .5rem; border-radius:.4rem; font-size:.85rem;}
+.muted { color:#7b7b7b; font-size:.9rem; }
+.btn { padding:.6rem .9rem; border-radius:.6rem; border:1px solid #ddd; background:#fff; cursor:pointer; }
+.btn.primary { background:#2e7be6; border-color:#2e7be6; color:#fff; }
+.btn.ghost { background:transparent; }
+.card { background:#fff; border:1px solid #e8e8e8; border-radius:.8rem; padding:1rem 1.1rem; margin: 1rem 0; }
+.hidden { display:none !important; }
+.container { max-width: 820px; margin: 0 auto; padding: 0 1rem; }
+.site-header, .site-foot { padding: .8rem 1rem; }
