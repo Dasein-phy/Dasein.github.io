@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core Test</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header>
+    <nav>
+      <ul class="nav">
+        <li><a href="index.html">首页</a></li>
+        <li><a href="archive.html">归档</a></li>
+        <li><a href="meaning.html">意义测试</a></li>
+        <li><a href="index.core.html" class="active">Core Test</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- 测试容器 -->
+  <main id="core-test-container">
+    <section class="test-box">
+      <h1>Core Test</h1>
+      <!-- 动态渲染题目 -->
+      <div id="question-container"></div>
+      <!-- 动态渲染选项 -->
+      <div id="options-container"></div>
+      <!-- 进度与控制 -->
+      <div id="progress-container"></div>
+    </section>
+  </main>
+
+  <!-- 底部 -->
+  <footer>
+    <p>&copy; 2025 Core Test System</p>
+  </footer>
+
+  <!-- 脚本 -->
+  <script src="app.js"></script>
+  <script src="app.core.js"></script>
+</body>
+</html>
