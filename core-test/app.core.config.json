@@ -2,11 +2,7 @@
   "useCoreModel": true,
   "core": {
     "itemsPath": "./core-test/items.core.v1.json",
-    "theta": {
-      "beta_RE": 0.60,
-      "clipMin": 1,
-      "clipMax": 5
-    },
+    "theta": { "beta_RE": 0.60, "clipMin": 1, "clipMax": 5 },
     "classify": {
       "prototypes": [
         { "id": "A0", "name": "低觉察沉浸", "R": 1.8, "J": 3.5, "E": 1.8 },
