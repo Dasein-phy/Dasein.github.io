@@ -1,42 +1,112 @@
 {
-  "useCoreModel": true,
-
-  "orth_beta_R2E": 0.55,
-
-  "prototypes": [
-    { "macro": "A0", "label": "A0 低觉察沉浸",   "R": 2.1, "J": 3.2, "Ep": 2.3 },
-    { "macro": "A1", "label": "A1 外部建构依赖", "R": 2.3, "J": 4.2, "Ep": 2.2 },
-    { "macro": "B0", "label": "B0 高建构依赖",   "R": 3.0, "J": 4.1, "Ep": 2.6 },
-    { "macro": "B1", "label": "B1 局部建构",     "R": 3.6, "J": 3.2, "Ep": 2.8 },
-    { "macro": "B2", "label": "B2 透明虚构",     "R": 3.8, "J": 2.8, "Ep": 3.0 },
-    { "macro": "B3", "label": "B3 功能主义",     "R": 3.2, "J": 3.6, "Ep": 2.7 },
-    { "macro": "C0", "label": "C0 去建构",       "R": 3.5, "J": 2.5, "Ep": 3.8 },
-    { "macro": "C1", "label": "C1 反身介入",     "R": 4.4, "J": 2.4, "Ep": 3.6 },
-    { "macro": "C2", "label": "C2 停滞冻结",     "R": 4.5, "J": 2.3, "Ep": 4.3 },
-    { "macro": "C3", "label": "C3 去魅萌发",     "R": 2.8, "J": 2.4, "Ep": 3.6 },
-    { "macro": "D0", "label": "D0 审美姿态",     "R": 3.3, "J": 2.7, "Ep": 3.1 },
-    { "macro": "D1", "label": "D1 荒诞反抗",     "R": 3.6, "J": 2.4, "Ep": 3.9 },
-    { "macro": "E0", "label": "E0 义务契约",     "R": 3.1, "J": 3.7, "Ep": 2.8 },
-    { "macro": "E1", "label": "E1 享乐幸福",     "R": 2.9, "J": 2.8, "Ep": 2.7 },
-    { "macro": "F0", "label": "F0 动态混合",     "R": 3.4, "J": 3.0, "Ep": 3.2 }
-  ],
-
-  "routing": {
-    "enabled": true,
-    "items_per_pair": 8,
-    "draw_seed": "core-branch-seed",
-    "pairs": {
-      "C1": { "pool": "C1_vs_C2", "opponent": "C2", "enabled": true },
-      "C2": { "pool": "C1_vs_C2", "opponent": "C1", "enabled": true },
-      "B0": { "pool": "B0_vs_B3", "opponent": "B3", "enabled": true },
-      "B3": { "pool": "B0_vs_B3", "opponent": "B0", "enabled": true }
+  "ui": {
+    "title": "核心三轴测评（R/J/E′）",
+    "subtitle": "Core Model (R / J / E′)",
+    "show_branding": true
+  },
+  "core": {
+    "useCoreModel": true,
+    "scale": {
+      "likert7_map": [1, 1.67, 2.33, 3, 3.67, 4.33, 5]
     },
-    "fusion": {
-      "per_item_logit": 0.42,
-      "max_items_effect": 10,
-      "post_softmax_tau": 1.0
+    "domains": ["GEN", "ACADEMIC", "FAMILY", "PUBLIC"],
+    "norms": {
+      "R": { "mean": 3.0, "sd": 0.8 },
+      "J": { "mean": 3.0, "sd": 0.8 },
+      "E": { "mean": 3.0, "sd": 0.8 },
+      "beta_RE": 0.60
     }
+  },
+  "models": [
+    {
+      "macro": "A0",
+      "label": "低觉察沉浸",
+      "centroid": { "R": 1.8, "J": 2.8, "E": 1.8 }
+    },
+    {
+      "macro": "A1",
+      "label": "外部建构依赖",
+      "centroid": { "R": 2.0, "J": 4.2, "E": 2.2 }
+    },
+    {
+      "macro": "B0",
+      "label": "高建构依赖",
+      "centroid": { "R": 3.0, "J": 4.4, "E": 2.4 }
+    },
+    {
+      "macro": "B1",
+      "label": "局部建构",
+      "centroid": { "R": 3.6, "J": 3.2, "E": 2.8 }
+    },
+    {
+      "macro": "B2",
+      "label": "透明虚构",
+      "centroid": { "R": 3.8, "J": 2.8, "E": 3.0 }
+    },
+    {
+      "macro": "B3",
+      "label": "功能主义",
+      "centroid": { "R": 3.4, "J": 3.6, "E": 2.6 }
+    },
+    {
+      "macro": "C0",
+      "label": "去建构",
+      "centroid": { "R": 3.6, "J": 2.2, "E": 3.2 }
+    },
+    {
+      "macro": "C1",
+      "label": "反身介入",
+      "centroid": { "R": 4.4, "J": 2.0, "E": 3.6 }
+    },
+    {
+      "macro": "C2",
+      "label": "停滞冻结",
+      "centroid": { "R": 4.4, "J": 2.0, "E": 4.4 }
+    },
+    {
+      "macro": "C3",
+      "label": "去魅萌发",
+      "centroid": { "R": 2.8, "J": 2.4, "E": 3.6 }
+    },
+    {
+      "macro": "D0",
+      "label": "审美姿态",
+      "centroid": { "R": 3.6, "J": 2.4, "E": 3.2 }
+    },
+    {
+      "macro": "D1",
+      "label": "荒诞反抗",
+      "centroid": { "R": 3.8, "J": 1.8, "E": 3.8 }
+    },
+    {
+      "macro": "E0",
+      "label": "义务契约",
+      "centroid": { "R": 3.2, "J": 3.6, "E": 2.8 }
+    },
+    {
+      "macro": "E1",
+      "label": "享乐幸福",
+      "centroid": { "R": 2.8, "J": 2.2, "E": 2.4 }
+    },
+    {
+      "macro": "F0",
+      "label": "动态混合",
+      "centroid": { "R": 3.6, "J": 3.0, "E": 3.4 }
+    }
+  ],
+  "routing": {
+    "branch_rules": [
+      {
+        "pair": ["C1", "C2"],
+        "gate": { "entropy_max": 1.20, "min_gap": 0.08 },
+        "block_id": "C1vC2"
+      },
+      {
+        "pair": ["B0", "B3"],
+        "gate": { "entropy_max": 1.20, "min_gap": 0.08 },
+        "block_id": "B0vB3"
+      }
+    ]
   }
 }
 
-}
