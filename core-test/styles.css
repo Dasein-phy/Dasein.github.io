@@ -253,3 +253,11 @@
 .mt-app h2::before,
 .mt-app .card h2::before { content:none !important; display:none !important; }
 
+/* 每题小卡片：去掉 item 的虚线分隔，适当的留白 */
+.mt-app .item.card{
+  border-bottom: 0;       /* 取消 .item 默认的虚线底边 */
+  padding: 16px;          /* 和基线单题卡片一致的内边距 */
+  margin: 12px 0;         /* 卡片之间的垂直间距 */
+}
+
+
