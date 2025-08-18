@@ -1,47 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
   <title>意义姿态 · 核心模型（Core）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- 复用你的站点样式 -->
   <link rel="stylesheet" href="../styles.css" />
-  <style>
-    /* 仅一行标题小标识，不改你原来的全局样式 */
-    .subtle { color:#888; font-size:.95rem; margin-left:.5rem; }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <!-- 顶部标题，保持你原来的版式 -->
-    <h1>意义姿态 · 核心模型（Core） <span class="subtle">R/J/E′ 三轴量表</span></h1>
+  <div class="container"></div>
 
-    <!-- ===== Intro 卡片（与旧版结构一致） ===== -->
-    <section id="intro" class="card">
-      <h2>开始</h2>
-      <p>本路径仅使用 <strong>R/J/E′</strong> 三轴核心量表（36题，逐题出现）。完成后直接给出 Top1/Top2 宏姿态候选。</p>
-      <div class="actions">
-        <button id="startBtn" class="btn primary">开始核心测试</button>
-      </div>
-    </section>
+  <!-- 统一 UI 脚手架：生成 #intro / #survey / #report -->
+  <script src="../shared/ui.scaffold.js"></script>
+  <script>
+    mountStandardTestUI({
+      title: '意义姿态 · 核心模型（Core）',
+      subtitle: 'R / J / E′ 三轴量表',
+      intro: '36 题，逐题出现；完成后显示 Top1/Top2 候选与置信区间。',
+      homeHref: '../index.html'
+    });
+  </script>
 
-    <!-- ===== Survey 卡片（与旧版结构一致） ===== -->
-    <section id="survey" class="hidden">
-      <form id="surveyForm"></form>
-      <div class="actions" style="display:none">
-        <button id="submitSurvey" class="btn primary">提交</button>
-      </div>
-    </section>
-
-    <!-- ===== Report 卡片（与旧版结构一致） ===== -->
-    <section id="report" class="hidden">
-      <div id="reportContent" class="card"></div>
-      <div class="actions">
-        <a class="btn" href="../index.html">返回首页</a>
-      </div>
-    </section>
-  </div>
-
-  <!-- 注意：不加载基线 app.js，避免混淆；只加载 Core 逻辑 -->
+  <!-- Core 量表逻辑（使用与基线一致的交互：逐题出现/自动滚动等） -->
   <script src="./app.core.js"></script>
 </body>
 </html>
