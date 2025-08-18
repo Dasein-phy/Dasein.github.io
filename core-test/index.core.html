@@ -1,66 +1,50 @@
 ---
-layout: page
+layout: default
 title: 核心三轴测试
-permalink: /meaning-test/core-test/
+permalink: /core-test/
 ---
 
-<div class="mt-page">
-  <div class="mt-wrap mt-app">
+<link rel="stylesheet" href="{{ '/styles.css' | relative_url }}"/>
 
-    <header class="mt-header">
-      <h1 class="site-title"><a href="{{ site.baseurl }}/">Dasein</a></h1>
-      <nav class="mt-nav">
-        <a href="{{ site.baseurl }}/">首页</a>
-        <a href="{{ site.baseurl }}/archive/">归档</a>
-        <a href="{{ site.baseurl }}/meaning-test/">意义测试</a>
-        <span class="nav-current">核心三轴测试</span>
-      </nav>
-    </header>
+<main class="container">
+  <h1 class="page-title">意义姿态测试 · 核心三轴模型（Core）</h1>
 
-    <main class="mt-main">
-      <!-- Intro -->
-      <section id="intro" class="card">
-        <h2>核心三轴测评（R / J / E′）</h2>
-        <p>本测试使用 R（反身/觉察）、J（外部正当化）、E′（去魅残差）三轴进行测量。</p>
-        <button id="startBtn" class="btn">开始测试</button>
-      </section>
+  <!-- 说明卡片（与基线一致结构） -->
+  <section id="intro" class="card">
+    <h2>说明</h2>
+    <ol class="intro-list">
+      <li>本路径使用 <strong>R</strong>（反身/觉察）、<strong>J</strong>（外部正当化）、<strong>E′</strong>（去魅残差）三轴进行测量。</li>
+      <li>全部为 1–7 级李克特量表；不收集个人身份信息，计算在本地浏览器完成。</li>
+      <li>完成后可查看结果并导出为 JSON。</li>
+    </ol>
+    <button id="startBtn" class="btn btn-primary">开始测试</button>
+  </section>
 
-      <!-- Survey（逐题出现） -->
-      <section id="survey" class="hidden card">
-        <div class="card-header">
-          <h3>问卷</h3>
-          <small>7 点量表：非常不同意 → 非常同意</small>
-        </div>
-        <form id="surveyForm"></form>
-        <div class="actions">
-          <button id="submitSurvey" class="btn">提交</button>
-        </div>
-      </section>
+  <!-- 问卷区（逐题出现） -->
+  <section id="survey" class="hidden">
+    <div class="card">
+      <div class="survey-head">
+        <span class="badge">核心问卷</span>
+        <span id="progress" class="muted">0 / 36</span>
+      </div>
+      <form id="surveyForm"></form>
+      <div class="actions">
+        <button id="submitSurvey" class="btn btn-primary" type="button">提交</button>
+      </div>
+    </div>
+  </section>
 
-      <!-- Report -->
-      <section id="report" class="hidden card">
-        <div class="card-header">
-          <h3>结果</h3>
-        </div>
-        <div id="reportContent"></div>
-        <div class="actions">
-          <a class="btn" href="{{ site.baseurl }}/meaning-test/">返回基线</a>
-        </div>
-      </section>
-    </main>
+  <!-- 结果区 -->
+  <section id="report" class="hidden">
+    <div class="card">
+      <h2>结果</h2>
+      <div id="reportContent"></div>
+      <div class="actions">
+        <button id="download" class="btn" type="button">下载 JSON</button>
+        <a href="{{ '/' | relative_url }}" class="btn">返回首页</a>
+      </div>
+    </div>
+  </section>
+</main>
 
-    <footer class="mt-footer">
-      <p>© 意义姿态测试 · 仅供学术探索使用</p>
-    </footer>
-
-  </div>
-</div>
-
-<!-- 直接用与基线相同的样式 -->
-<link rel="stylesheet" href="{{ site.baseurl }}/meaning-test/styles.css">
-
-<script>
-  window.__CORE_CFG_PATH = "{{ site.baseurl }}/meaning-test/core-test/app.core.config.json";
-  window.__CORE_ITEMS_PATH = "{{ site.baseurl }}/meaning-test/core-test/items.core.v1.json";
-</script>
-<script src="{{ site.baseurl }}/meaning-test/core-test/app.core.js"></script>
+<script src="{{ '/core-test/app.core.js' | relative_url }}"></script>
