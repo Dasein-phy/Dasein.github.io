@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>意义姿态 • 核心模型（Core）</title>
+  <link rel="stylesheet" href="../styles.css"/>
+  <style>
+    /* 只做极少补充，复用你现有 styles.css 的卡片/按钮/likert 等样式 */
+    .page-wrap{max-width:980px;margin:24px auto;padding:0 16px;}
+    .hidden{display:none!important;}
+    .subtitle{color:#888;font-size:.95rem;margin-left:8px;}
+    .badge-macro{display:inline-block;padding:.25rem .5rem;border-radius:6px;background:#f4f6ff;color:#3b5bdb;}
+    .hint{color:#888;font-size:.9rem;}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <h1>意义姿态 • 核心模型（Core）<span class="subtitle">R/J/E′ 三轴</span></h1>
+
+    <!-- Intro -->
+    <section id="core-intro" class="card">
+      <h3>开始</h3>
+      <p class="hint">本路径只测 <b>R/J/E′</b> 三轴核心量表，完成后给出 Top1/Top2 宏姿态候选（带置信提示）。</p>
+      <div class="actions">
+        <button id="coreStartBtn" class="btn btn-primary">开始核心测试</button>
+      </div>
+    </section>
+
+    <!-- Survey -->
+    <section id="core-survey" class="hidden">
+      <div class="card">
+        <div class="flex-row" style="justify-content:space-between;align-items:center;">
+          <div><b id="coreProgress">0 / 36</b></div>
+          <div class="hint">量表：1=非常不同意 ··· 5=非常同意</div>
+        </div>
+      </div>
+
+      <form id="coreSurveyForm"></form>
+
+      <div class="card actions" style="display:none" id="coreSubmitWrap">
+        <button id="coreSubmitBtn" class="btn btn-primary">生成结果</button>
+      </div>
+    </section>
+
+    <!-- Report -->
+    <section id="core-report" class="hidden">
+      <div class="card">
+        <h3>结果</h3>
+        <div id="coreReportContent"></div>
+      </div>
+
+      <div class="card actions">
+        <!-- 如需回到首页自己再加；这里保留“重新开始” -->
+        <button id="coreRestartBtn" class="btn">重新开始</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // 右上角导航入口（你如果已经在主题里加了固定导航，可以删除这段）
+    (function addNav(){
+      const a=document.createElement('a');
+      a.href='/core-test/index.core.html'; a.textContent='核心模型（Core）';
+      a.style.position='fixed';a.style.top='12px';a.style.right='18px';a.style.fontSize='.92rem';
+      a.style.opacity='.75';a.style.textDecoration='none';
+      a.onmouseenter=()=>a.style.opacity='1'; a.onmouseleave=()=>a.style.opacity='.75';
+      document.body.appendChild(a);
+    })();
+  </script>
+
+  <script src="./app.core.js"></script>
+</body>
+</html>
